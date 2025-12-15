@@ -1,0 +1,53 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+    provider = "sqlite"
+    url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  flirts    Flirt[]
+  createdAt DateTime @default(now())
+}
+
+model Flirt {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  steps       Step[]
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Step {
+  id       String   @id @default(cuid())
+  flirtId  String
+  flirt    Flirt    @relation(fields: [flirtId], references: [id])
+  content  String
+  media    Media[]
+  order    Int
+}
+
+model Media {
+  id     String   @id @default(cuid())
+  stepId String
+  step   Step     @relation(fields: [stepId], references: [id])
+  url    String
+  type   String   // IMAGE / VIDEO
+}
+
+
+
+

@@ -1,25 +1,40 @@
-"use client";
+"use client"; 
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function WizardPage() {
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const router = useRouter();
 
   const nextStep = () => setStep((prev) => Math.min(prev + 1, 3));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
-  const handleSubmit = () => {
-    alert(`Tease saved!\nTitle: ${title}\nDescription: ${description}`);
-    // later: call your API route to save in DB
+  const handleSubmit = async () => {
+    try {
+      const res = await fetch("/api/flirt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed");
+
+      router.push(`/flirts/${result.flirtId}/steps/${result.firstStepId}`);
+    } catch (err) {
+      console.error(err);
+      alert("Error saving flirt.");
+    }
   };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 dark:bg-black p-4">
       <div className="w-full max-w-md bg-white dark:bg-zinc-900 p-6 rounded-lg shadow-md">
         <h1 className="text-2xl font-bold mb-4 text-center text-black dark:text-white">
-          Tease Wizard
+          Flirt Wizard
         </h1>
 
         {/* Step Content */}
@@ -31,7 +46,7 @@ export default function WizardPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="border p-2 rounded"
-              placeholder="Enter tease title"
+              placeholder="Enter flirt title"
             />
           </div>
         )}
@@ -43,7 +58,7 @@ export default function WizardPage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="border p-2 rounded"
-              placeholder="Enter tease description"
+              placeholder="Enter flirt description"
             />
           </div>
         )}
@@ -79,7 +94,7 @@ export default function WizardPage() {
               onClick={handleSubmit}
               className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700"
             >
-              Submit
+              Create
             </button>
           )}
         </div>
