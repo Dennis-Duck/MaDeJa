@@ -22,8 +22,12 @@ export default async function Page({
     notFound();
   }
 
+  const totalSteps = await prisma.step.count({
+    where: { flirtId: flirtId },
+  });
+
   return (
-    <StepPageClient initialFlirtId={flirtId} initialStep={step}
+    <StepPageClient initialFlirtId={flirtId} initialStep={step} totalSteps={totalSteps}
     />
   );
 }

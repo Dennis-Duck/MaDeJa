@@ -39,9 +39,12 @@ export async function POST(req: NextRequest) {
         },
         include: { media: true },
       });
+      steps.push(nextStep);
     }
 
-    return NextResponse.json({ step: nextStep });
+    const totalSteps = steps.length;
+
+    return NextResponse.json({ step: nextStep, totalSteps });
   } catch (err) {
     console.error("NEXT STEP ERROR", err);
     return NextResponse.json(
