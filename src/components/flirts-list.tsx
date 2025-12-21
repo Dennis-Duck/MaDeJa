@@ -1,16 +1,34 @@
-import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+"use client";
 
-export default async function FlirtsList() {
-  const flirts = await prisma.flirt.findMany({
-    include: {
-      author: true,
-      steps: {
-        orderBy: { order: "asc" },
-        take: 1,
-      },
-    },
-  });
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+interface Flirt {
+  id: string;
+  title: string;
+  author: { email: string };
+  steps: { id: string; order: number }[];
+}
+
+export default function FlirtsList({ initialFlirts }: { initialFlirts: Flirt[] }) {
+  const [flirts, setFlirts] = useState(initialFlirts);
+  const router = useRouter();
+
+  const handleDelete = async (flirtId: string) => {
+    if (!confirm("Are you sure you want to delete this flirt?")) return;
+
+    const res = await fetch(`/api/flirts/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ flirtId }),
+    });
+
+    if (!res.ok) return alert("Failed to delete");
+
+    // filter out deleted flirt
+    setFlirts(flirts.filter((f) => f.id !== flirtId));
+  };
 
   return (
     <ul className="space-y-2">
@@ -22,14 +40,22 @@ export default async function FlirtsList() {
             <span>
               {flirt.title} - by {flirt.author.email}
             </span>
-            {firstStep && (
-              <Link
-                href={`/flirts/${flirt.id}/steps/${firstStep.id}`}
-                className="px-2 py-1 bg-yellow-400 text-black rounded hover:bg-yellow-500"
+            <div className="flex gap-2">
+              {firstStep && (
+                <Link
+                  href={`/flirts/${flirt.id}/steps/${firstStep.id}`}
+                  className="px-2 py-1 bg-yellow-400 text-black rounded hover:bg-yellow-500"
+                >
+                  Edit
+                </Link>
+              )}
+              <button
+                onClick={() => handleDelete(flirt.id)}
+                className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
               >
-                Edit
-              </Link>
-            )}
+                Delete
+              </button>
+            </div>
           </li>
         );
       })}

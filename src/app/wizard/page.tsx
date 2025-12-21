@@ -14,7 +14,7 @@ export default function WizardPage() {
 
   const handleSubmit = async () => {
     try {
-      const res = await fetch("/api/flirt", {
+      const res = await fetch("/api/flirts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, description }),
