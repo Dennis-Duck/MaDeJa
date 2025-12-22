@@ -17,10 +17,9 @@ export function useStepEditor(
 
   const fetchStep = async (stepId: string) => {
     try {
-      const res = await fetch("/api/step/get", {
-        method: "POST",
+      const res = await fetch(`/api/step/${stepId}`, {
+        method: "GET",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flirtId: initialFlirtId, stepId }),
       });
       if (!res.ok) throw new Error("Failed to fetch step");
       const data = await res.json();
@@ -35,10 +34,10 @@ export function useStepEditor(
 
   const next = async () => {
     try {
-      const res = await fetch("/api/step/next", {
+      const res = await fetch(`/api/step/${step.id}/next`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flirtId: initialFlirtId, currentStepId: step.id }),
+        body: JSON.stringify({ flirtId: initialFlirtId }),
       });
       if (!res.ok) return null;
       const data = await res.json();
@@ -53,10 +52,10 @@ export function useStepEditor(
 
   const previous = async () => {
     try {
-      const res = await fetch("/api/step/previous", {
+      const res = await fetch(`/api/step/${step.id}/previous`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flirtId: initialFlirtId, currentStepId: step.id }),
+        body: JSON.stringify({ flirtId: initialFlirtId }),
       });
       if (!res.ok) return null;
       const data = await res.json();
@@ -72,34 +71,33 @@ export function useStepEditor(
     let targetStepId: string | null = null;
 
     if (step.order < totalSteps) {
-      const resNext = await fetch("/api/step/next", {
+      const resNext = await fetch(`/api/step/${step.id}/next`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flirtId: initialFlirtId, currentStepId: step.id }),
+        body: JSON.stringify({ flirtId: initialFlirtId }),
       });
       if (resNext.ok) targetStepId = (await resNext.json()).step.id;
     }
 
     if (!targetStepId) {
-      const resPrev = await fetch("/api/step/previous", {
+      const resPrev = await fetch(`/api/step/${step.id}/previous`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flirtId: initialFlirtId, currentStepId: step.id }),
+        body: JSON.stringify({ flirtId: initialFlirtId }),
       });
       if (resPrev.ok) targetStepId = (await resPrev.json()).step.id;
     }
 
-    await fetch("/api/step/delete", {
-      method: "POST",
+    await fetch(`/api/step/${step.id}`, {
+      method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stepId: step.id }),
     });
 
     if (targetStepId) {
       await fetchStep(targetStepId);
       router.replace(`/flirts/${initialFlirtId}/steps/${targetStepId}`);
     } else {
-      const resCreate = await fetch("/api/step/create", {
+      const resCreate = await fetch("/api/step", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ flirtId: initialFlirtId }),

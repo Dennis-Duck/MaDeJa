@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function POST(req: NextRequest) {
+interface RouteContext {
+  params: Promise<{ stepId: string }>;
+}
+
+export async function POST(req: NextRequest, context: RouteContext) {
   try {
-    const { flirtId, currentStepId } = await req.json();
+    const { stepId } = await context.params;
+    const body = await req.json();
+    const { flirtId } = body;
 
     if (!flirtId) {
       return NextResponse.json(
@@ -20,9 +26,9 @@ export async function POST(req: NextRequest) {
 
     let nextStep;
 
-    if (currentStepId) {
+    if (stepId) {
       const currentIndex = steps.findIndex(
-        (step) => step.id === currentStepId
+        (step) => step.id === stepId
       );
 
       if (currentIndex !== -1 && currentIndex < steps.length - 1) {

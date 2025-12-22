@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 interface Flirt {
   id: string;
@@ -13,15 +12,13 @@ interface Flirt {
 
 export default function FlirtsList({ initialFlirts }: { initialFlirts: Flirt[] }) {
   const [flirts, setFlirts] = useState(initialFlirts);
-  const router = useRouter();
 
   const handleDelete = async (flirtId: string) => {
     if (!confirm("Are you sure you want to delete this flirt?")) return;
 
-    const res = await fetch(`/api/flirts/delete`, {
-      method: "POST",
+    const res = await fetch(`/api/flirts/${flirtId}`, {
+      method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ flirtId }),
     });
 
     if (!res.ok) return alert("Failed to delete");

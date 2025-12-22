@@ -30,10 +30,9 @@ export default function StepContent({
   // Refetch step on mount to ensure latest positions
   useEffect(() => {
     async function fetchStep() {
-      const res = await fetch("/api/step/get", {
-        method: "POST",
+      const res = await fetch(`/api/step/${initialStep.id}`, {
+        method: "GET",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flirtId: initialFlirtId, stepId: initialStep.id }),
       });
       if (res.ok) {
         const data = await res.json();

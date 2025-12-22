@@ -34,7 +34,7 @@ model Flirt {
 model Step {
   id       String   @id @default(cuid())
   flirtId  String
-  flirt    Flirt    @relation(fields: [flirtId], references: [id])
+  flirt    Flirt    @relation(fields: [flirtId], references: [id], onDelete: Cascade)
   content  String
   media    Media[]
   order    Int
@@ -43,7 +43,7 @@ model Step {
 model Media {
   id     String   @id @default(cuid())
   stepId String
-  step   Step     @relation(fields: [stepId], references: [id])
+  step   Step     @relation(fields: [stepId], references: [id], onDelete: Cascade)
   url    String
   type   String   // IMAGE / VIDEO
   x      Float @default(0)

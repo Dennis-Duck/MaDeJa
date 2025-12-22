@@ -13,13 +13,13 @@ export async function POST(req: Request) {
   }) + 1;
 
   const step = await prisma.step.create({
-        data: {
-          flirtId,
-          content: "",
-          order: order,
-        },
-        include: { media: true },
-      });
+    data: {
+      flirtId,
+      content: "",
+      order: order,
+    },
+    include: { media: true },
+  });
 
   return NextResponse.json({ step });
 }

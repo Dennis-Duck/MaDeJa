@@ -2,26 +2,42 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 interface RouteContext {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export async function DELETE(req: Request, context: RouteContext) {
-  // context.params is *direct* beschikbaar, geen await nodig
-  const flirtId = context.params.id;
+export async function GET(req: Request, context: RouteContext) {
+  const { id: flirtId } = await context.params;
 
   if (!flirtId) {
     return NextResponse.json({ error: "No flirtId provided" }, { status: 400 });
   }
 
   try {
-    await prisma.media.deleteMany({
-      where: { step: { flirtId } },
+    const flirt = await prisma.flirt.findUnique({
+      where: { id: flirtId },
+      include: { steps: true },
     });
 
-    await prisma.step.deleteMany({
-      where: { flirtId },
-    });
+    if (!flirt) {
+      return NextResponse.json({ error: "Flirt not found" }, { status: 404 });
+    }
 
+    return NextResponse.json(flirt);
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: "Failed to fetch flirt" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request, context: RouteContext) {
+  const { id: flirtId } = await context.params;
+
+  if (!flirtId) {
+    return NextResponse.json({ error: "No flirtId provided" }, { status: 400 });
+  }
+
+  try {
+    // Cascading delete is handled by the database (onDelete: Cascade in schema)
     await prisma.flirt.delete({
       where: { id: flirtId },
     });
