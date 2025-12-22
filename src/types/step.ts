@@ -3,5 +3,19 @@ export interface Step {
   flirtId: string;
   order: number;
   content: string;
-  media: { id: string; url: string; type: string }[];
+  media: Media[];
+}
+
+export interface Media {
+  id: string;
+  url: string;
+  type: string; // "IMAGE" | "VIDEO"
+  x?: number;   // optioneel voor position
+  y?: number;
+  z?: number;
+}
+
+export enum MediaType {
+  IMAGE = "IMAGE",
+  VIDEO = "VIDEO",
 }

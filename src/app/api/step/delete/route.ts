@@ -32,7 +32,12 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        return NextResponse.json({ success: true });
+        const previousStep = await prisma.step.findFirst({
+            where: { flirtId: step?.flirtId, order: (step?.order ?? 0) - 1 },
+            include: { media: true },
+        });
+
+        return NextResponse.json({ success: true, previousStep });
     } catch (err) {
         console.error("DELETE STEP ERROR", err);
         return NextResponse.json({ error: "Failed to delete step" }, { status: 500 });

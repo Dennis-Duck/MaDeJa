@@ -46,6 +46,9 @@ model Media {
   step   Step     @relation(fields: [stepId], references: [id])
   url    String
   type   String   // IMAGE / VIDEO
+  x      Float @default(0)
+  y      Float @default(0)
+  z      Int   @default(0)
 }
 
 
