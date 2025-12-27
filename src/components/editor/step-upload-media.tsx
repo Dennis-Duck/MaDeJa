@@ -25,6 +25,24 @@ export default function UploadPic({ stepId, onUploadComplete }: UploadPicProps) 
     formData.append("file", file);
     formData.append("stepId", stepId);
 
+    // If image, try to read natural width/height and append to form
+    if (file.type.startsWith("image/")) {
+      try {
+        await new Promise<void>((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            formData.append("width", String(img.naturalWidth));
+            formData.append("height", String(img.naturalHeight));
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = preview || URL.createObjectURL(file);
+        });
+      } catch (e) {
+        // ignore and continue without dimensions
+      }
+    }
+
     const res = await fetch("/api/upload", {
       method: "POST",
       body: formData,
@@ -35,9 +53,11 @@ export default function UploadPic({ stepId, onUploadComplete }: UploadPicProps) 
     const data = await res.json();
     console.log("Upload result:", data);
 
+    // Clear form immediately for UX
     setFile(null);
     setPreview(null);
 
+    // Notify parent to refresh step data
     if (onUploadComplete) onUploadComplete(); // notify parent
   };
 

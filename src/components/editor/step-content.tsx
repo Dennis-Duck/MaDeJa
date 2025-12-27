@@ -59,6 +59,11 @@ export default function StepContent({
     fetchStep();
   }, [initialFlirtId, initialStep.id]);
 
+  // Keep local `step` state in sync when parent passes a new `initialStep` object
+  useEffect(() => {
+    setStep(initialStep);
+  }, [initialStep]);
+
 
  // PATCH position
   async function updatePosition(mediaId: string, x: number, y: number) {
@@ -245,9 +250,9 @@ export default function StepContent({
           m.id === resizingItem ? { ...m, width: newWidth, height: newHeight, x: newX, y: newY } : m
         ),
       }));
-      onStepContentChange?.();
       
-      // Then persist to database
+      // Persist to database - don't call onStepContentChange until both updates complete
+      // This prevents the state from being overwritten by a fetchStep call
       await updateSize(resizingItem, newWidth, newHeight);
       await updatePosition(resizingItem, newX, newY);
     }

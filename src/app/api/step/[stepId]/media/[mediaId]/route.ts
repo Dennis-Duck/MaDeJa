@@ -55,7 +55,7 @@ export async function PATCH(
   const { stepId, mediaId } = await params
   const body = await request.json()
 
-  const { x, y, z } = body
+  const { x, y, z, width, height } = body
 
   try {
     const updated = await prisma.media.update({
@@ -64,11 +64,13 @@ export async function PATCH(
         ...(x !== undefined && { x }),
         ...(y !== undefined && { y }),
         ...(z !== undefined && { z }),
+        ...(width !== undefined && { width }),
+        ...(height !== undefined && { height }),
       },
     })
 
     console.log("Updated media:", updated)
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, media: updated })
   } catch (err) {
     console.error("Failed to update media:", err)
     return NextResponse.json({ error: "Failed to update media" }, { status: 500 })
