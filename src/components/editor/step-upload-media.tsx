@@ -25,14 +25,22 @@ export default function UploadPic({ stepId, onUploadComplete }: UploadPicProps) 
     formData.append("file", file);
     formData.append("stepId", stepId);
 
-    // If image, try to read natural width/height and append to form
+    const MAX_SIZE = 500;
+
     if (file.type.startsWith("image/")) {
       try {
         await new Promise<void>((resolve) => {
           const img = new Image();
           img.onload = () => {
-            formData.append("width", String(img.naturalWidth));
-            formData.append("height", String(img.naturalHeight));
+            let { naturalWidth: width, naturalHeight: height } = img;
+
+            // Scale down if image is too big
+            const scale = Math.min(MAX_SIZE / width, MAX_SIZE / height, 1);
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+
+            formData.append("width", String(width));
+            formData.append("height", String(height));
             resolve();
           };
           img.onerror = () => resolve();

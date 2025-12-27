@@ -13,8 +13,8 @@ export interface Media {
   x?: number;  
   y?: number;
   z?: number;
-  width?: number; 
-  height?: number;
+  width?: number | null; 
+  height?: number | null;
 }
 
 export enum MediaType {
