@@ -49,6 +49,8 @@ model Media {
   x      Float @default(0)
   y      Float @default(0)
   z      Int   @default(0)
+  width  Float?
+  height Float?
 }
 
 

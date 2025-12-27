@@ -36,6 +36,9 @@ export default function FlirtsList({ initialFlirts }: { initialFlirts: Flirt[] }
           <li key={flirt.id} className="flex items-center justify-between border p-2 rounded">
             <span>
               {flirt.title} - by {flirt.author.email}
+              <span className="ml-2 text-gray-600 text-sm">
+                ({flirt.steps.length} {flirt.steps.length === 1 ? "step" : "steps"})
+              </span>
             </span>
             <div className="flex gap-2">
               {firstStep && (

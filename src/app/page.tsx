@@ -6,7 +6,7 @@ export default async function Home() {
   const flirts = await prisma.flirt.findMany({
     include: {
       author: true,
-      steps: { orderBy: { order: "asc" }, take: 1 },
+      steps: { orderBy: { order: "asc" } },
     },
   });
 

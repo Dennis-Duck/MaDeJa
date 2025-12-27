@@ -9,10 +9,12 @@ export interface Step {
 export interface Media {
   id: string;
   url: string;
-  type: string; // "IMAGE" | "VIDEO"
-  x?: number;   // optioneel voor position
+  type: string; 
+  x?: number;  
   y?: number;
   z?: number;
+  width?: number; 
+  height?: number;
 }
 
 export enum MediaType {
