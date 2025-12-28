@@ -1,4 +1,4 @@
-import FlirtsList from "@/components/flirts-list";
+import FlirtsList from "@/components/flirts/flirts-list";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 

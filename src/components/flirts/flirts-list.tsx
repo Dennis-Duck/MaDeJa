@@ -42,6 +42,7 @@ export default function FlirtsList({ initialFlirts }: { initialFlirts: Flirt[] }
             </span>
             <div className="flex gap-2">
               {firstStep && (
+
                 <Link
                   href={`/flirts/${flirt.id}/steps/${firstStep.id}`}
                   className="px-2 py-1 bg-yellow-400 text-black rounded hover:bg-yellow-500"
@@ -49,12 +50,21 @@ export default function FlirtsList({ initialFlirts }: { initialFlirts: Flirt[] }
                   Edit
                 </Link>
               )}
+
+              <Link
+                href={`/flirts/${flirt.id}/slideshow`}
+                className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Slideshow
+              </Link>
+
               <button
                 onClick={() => handleDelete(flirt.id)}
                 className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
               >
                 Delete
               </button>
+              
             </div>
           </li>
         );

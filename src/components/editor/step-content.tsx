@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { Step, MediaType } from "@/types/step";
-import StepContextMenu from "./step-context-menu";
+import type { Step } from "@/types/step";
+import type { MediaType } from "@/types/media";
 import Image from "next/image";
+
+const CANVAS_WIDTH = 1920;
+const CANVAS_HEIGHT = 1080;
 
 interface StepContentProps {
   step: Step;
@@ -29,6 +32,8 @@ export default function StepContent({
   const [resizingItem, setResizingItem] = useState<string | null>(null);
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
   const [resizeMode, setResizeMode] = useState<{ [key: string]: 'scale' | 'resize' | null }>({});
+  const [scale, setScale] = useState(1);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const dragStartPos = useRef<{
     x: number;
@@ -44,6 +49,27 @@ export default function StepContent({
     initialX: number;
     initialY: number;
   } | null>(null);
+
+  // Bereken schaalfactor bij resize
+  useEffect(() => {
+    const updateScale = () => {
+      if (!containerRef.current) return;
+      const containerWidth = containerRef.current.offsetWidth;
+      const containerHeight = containerRef.current.offsetHeight;
+      const scaleX = containerWidth / CANVAS_WIDTH;
+      const scaleY = containerHeight / CANVAS_HEIGHT;
+      setScale(Math.min(scaleX, scaleY));
+    };
+
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    const timer = setTimeout(updateScale, 100);
+    
+    return () => {
+      window.removeEventListener("resize", updateScale);
+      clearTimeout(timer);
+    };
+  }, []);
 
   // Refetch step on mount to ensure latest positions
   useEffect(() => {
@@ -64,7 +90,6 @@ export default function StepContent({
   useEffect(() => {
     setStep(initialStep);
   }, [initialStep]);
-
 
   // PATCH position
   async function updatePosition(mediaId: string, x: number, y: number) {
@@ -185,22 +210,21 @@ export default function StepContent({
     if (!current) return;
 
     const mode = resizeMode[resizingItem] || 'resize';
-    const deltaX = e.clientX - resizeStartPos.current.x;
-    const deltaY = e.clientY - resizeStartPos.current.y;
+    // Corrigeer delta's voor de schaalfactor
+    const deltaX = (e.clientX - resizeStartPos.current.x) / scale;
+    const deltaY = (e.clientY - resizeStartPos.current.y) / scale;
     let newWidth = resizeStartPos.current.initialWidth;
     let newHeight = resizeStartPos.current.initialHeight;
     let newX = resizeStartPos.current.initialX;
     let newY = resizeStartPos.current.initialY;
 
     if (mode === 'scale') {
-      // Scale mode: maintain aspect ratio
       const aspectRatio = resizeStartPos.current.initialWidth / resizeStartPos.current.initialHeight;
-
       switch (resizeHandle) {
-        case "nw": // top-left
-        case "ne": // top-right
-        case "sw": // bottom-left
-        case "se": // bottom-right
+        case "nw":
+        case "ne":
+        case "sw":
+        case "se":
           const delta = Math.max(deltaX, deltaY);
           newWidth = Math.max(50, resizeStartPos.current.initialWidth + delta);
           newHeight = Math.max(50, newWidth / aspectRatio);
@@ -213,39 +237,38 @@ export default function StepContent({
           break;
       }
     } else {
-      // Resize mode: free sizing
       switch (resizeHandle) {
-        case "nw": // top-left
+        case "nw":
           newWidth = Math.max(50, resizeStartPos.current.initialWidth - deltaX);
           newHeight = Math.max(50, resizeStartPos.current.initialHeight - deltaY);
           newX = resizeStartPos.current.initialX + deltaX;
           newY = resizeStartPos.current.initialY + deltaY;
           break;
-        case "n": // top
+        case "n":
           newHeight = Math.max(50, resizeStartPos.current.initialHeight - deltaY);
           newY = resizeStartPos.current.initialY + deltaY;
           break;
-        case "ne": // top-right
+        case "ne":
           newWidth = Math.max(50, resizeStartPos.current.initialWidth + deltaX);
           newHeight = Math.max(50, resizeStartPos.current.initialHeight - deltaY);
           newY = resizeStartPos.current.initialY + deltaY;
           break;
-        case "e": // right
+        case "e":
           newWidth = Math.max(50, resizeStartPos.current.initialWidth + deltaX);
           break;
-        case "se": // bottom-right
+        case "se":
           newWidth = Math.max(50, resizeStartPos.current.initialWidth + deltaX);
           newHeight = Math.max(50, resizeStartPos.current.initialHeight + deltaY);
           break;
-        case "s": // bottom
+        case "s":
           newHeight = Math.max(50, resizeStartPos.current.initialHeight + deltaY);
           break;
-        case "sw": // bottom-left
+        case "sw":
           newWidth = Math.max(50, resizeStartPos.current.initialWidth - deltaX);
           newHeight = Math.max(50, resizeStartPos.current.initialHeight + deltaY);
           newX = resizeStartPos.current.initialX + deltaX;
           break;
-        case "w": // left
+        case "w":
           newWidth = Math.max(50, resizeStartPos.current.initialWidth - deltaX);
           newX = resizeStartPos.current.initialX + deltaX;
           break;
@@ -265,13 +288,11 @@ export default function StepContent({
     if (!resizingItem || !resizeStartPos.current) return;
     const el = document.getElementById(`media-${resizingItem}`);
     if (el) {
-      // Parse values with fallback to initial values
       const newWidth = parseInt(el.style.width) || resizeStartPos.current.initialWidth;
       const newHeight = parseInt(el.style.height) || resizeStartPos.current.initialHeight;
       const newX = parseInt(el.style.left) || resizeStartPos.current.initialX;
       const newY = parseInt(el.style.top) || resizeStartPos.current.initialY;
 
-      // Update state immediately for UI feedback
       setStep((prev) => ({
         ...prev,
         media: prev.media.map((m) =>
@@ -279,8 +300,6 @@ export default function StepContent({
         ),
       }));
 
-      // Persist to database - don't call onStepContentChange until both updates complete
-      // This prevents the state from being overwritten by a fetchStep call
       await updateSize(resizingItem, newWidth, newHeight);
       await updatePosition(resizingItem, newX, newY);
     }
@@ -347,10 +366,7 @@ export default function StepContent({
     };
   }
 
-  function handleContextMenu(
-    e: React.MouseEvent,
-    mediaId: string
-  ) {
+  function handleContextMenu(e: React.MouseEvent, mediaId: string) {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, mediaId });
     setSelectedItem(mediaId);
@@ -362,8 +378,9 @@ export default function StepContent({
       return;
     }
     if (!draggedItem || !dragStartPos.current) return;
-    const deltaX = e.clientX - dragStartPos.current.x;
-    const deltaY = e.clientY - dragStartPos.current.y;
+    // Corrigeer delta's voor de schaalfactor
+    const deltaX = (e.clientX - dragStartPos.current.x) / scale;
+    const deltaY = (e.clientY - dragStartPos.current.y) / scale;
     const newX = dragStartPos.current.itemX + deltaX;
     const newY = dragStartPos.current.itemY + deltaY;
 
@@ -396,131 +413,97 @@ export default function StepContent({
         Step {step.order}/{totalSteps}
       </p>
 
+      {/* Outer container met aspect ratio */}
       <div
-        className="relative bg-muted/20 rounded-lg border border-border mx-auto"
+        ref={containerRef}
+        className="relative bg-muted/20 rounded-lg border border-border mx-auto overflow-hidden"
         style={{
-    width: "1920px",
-    height: "1080px",
-    maxWidth: "90vw",
-    maxHeight: "80vh",
+          aspectRatio: `${CANVAS_WIDTH}/${CANVAS_HEIGHT}`,
+          maxHeight: "80vh",
+          width: "100%",
+          maxWidth: "90vw",
         }}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onClick={() => {
-          setContextMenu(null);
-        }}
+        onClick={() => setContextMenu(null)}
       >
-        {step.media
-          .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
-          .map((m) => (
-            <div
-              key={m.id}
-              id={`media-${m.id}`}
-              className="absolute rounded-lg shadow-lg"
-              style={{
-                left: m.x ?? 0,
-                top: m.y ?? 0,
-                width: m.width ?? 300,
-                height: m.height ?? 300,
-                zIndex: m.z ?? 0,
-                cursor: draggedItem === m.id ? "grabbing" : "grab",
-                outline: selectedItem === m.id ? "2px solid #3b82f6" : "none",
-                outlineOffset: "2px",
-              }}
-              onMouseDown={(e) => handleMouseDown(e, m.id)}
-              onClick={() => setSelectedItem(m.id)}
-              onContextMenu={(e) => handleContextMenu(e, m.id)}
-            >
-              {m.type === "IMAGE" ? (
-                <>
-                  <Image
-                    src={m.url || "/placeholder.svg"}
-                    alt="Step media"
-                    fill
-                    className="rounded-lg object-cover pointer-events-none select-none"
-                    draggable={false}
-                    unoptimized={m.url?.startsWith('http')} // Als externe URLs
-                  />
-                  <button
-                    onClick={() => handleDelete(m.id)}
-                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white font-bold"
-                  >
-                    ×
-                  </button>
+        {/* Geschaalde inner canvas */}
+        <div
+          className="absolute top-1/2 left-1/2"
+          style={{
+            width: CANVAS_WIDTH,
+            height: CANVAS_HEIGHT,
+            transform: `translate(-50%, -50%) scale(${scale})`,
+            transformOrigin: "center center",
+          }}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          {step.media
+            .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
+            .map((m) => (
+              <div
+                key={m.id}
+                id={`media-${m.id}`}
+                className="absolute rounded-lg shadow-lg"
+                style={{
+                  left: m.x ?? 0,
+                  top: m.y ?? 0,
+                  width: m.width ?? 300,
+                  height: m.height ?? 300,
+                  zIndex: m.z ?? 0,
+                  cursor: draggedItem === m.id ? "grabbing" : "grab",
+                  outline: selectedItem === m.id ? "2px solid #3b82f6" : "none",
+                  outlineOffset: "2px",
+                }}
+                onMouseDown={(e) => handleMouseDown(e, m.id)}
+                onClick={() => setSelectedItem(m.id)}
+                onContextMenu={(e) => handleContextMenu(e, m.id)}
+              >
+                {m.type === "IMAGE" ? (
+                  <>
+                    <Image
+                      src={m.url || "/placeholder.svg"}
+                      alt="Step media"
+                      fill
+                      className="rounded-lg object-cover pointer-events-none select-none"
+                      draggable={false}
+                      unoptimized={m.url?.startsWith('http')}
+                    />
+                    <button
+                      onClick={() => handleDelete(m.id)}
+                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white font-bold"
+                    >
+                      ×
+                    </button>
 
-                  {/* Resize handles */}
-                  {selectedItem === m.id && resizeMode[m.id] && (
-                    <>
-                      {resizeMode[m.id] === 'resize' && (
-                        <>
-                          {/* Top-left corner */}
-                          <div
-                            onMouseDown={(e) => handleResizeStart(e, m.id, "nw")}
-                            className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 cursor-nwse-resize rounded-full"
-                            style={{ pointerEvents: "auto" }}
-                          />
-                          {/* Top center */}
-                          <div
-                            onMouseDown={(e) => handleResizeStart(e, m.id, "n")}
-                            className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-blue-500 cursor-ns-resize rounded-full"
-                            style={{ pointerEvents: "auto" }}
-                          />
-                          {/* Top-right corner */}
-                          <div
-                            onMouseDown={(e) => handleResizeStart(e, m.id, "ne")}
-                            className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 cursor-nesw-resize rounded-full"
-                            style={{ pointerEvents: "auto" }}
-                          />
-                          {/* Right center */}
-                          <div
-                            onMouseDown={(e) => handleResizeStart(e, m.id, "e")}
-                            className="absolute top-1/2 -right-2 -translate-y-1/2 w-4 h-4 bg-blue-500 cursor-ew-resize rounded-full"
-                            style={{ pointerEvents: "auto" }}
-                          />
-                          {/* Bottom center */}
-                          <div
-                            onMouseDown={(e) => handleResizeStart(e, m.id, "s")}
-                            className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-blue-500 cursor-ns-resize rounded-full"
-                            style={{ pointerEvents: "auto" }}
-                          />
-                          {/* Bottom-left corner */}
-                          <div
-                            onMouseDown={(e) => handleResizeStart(e, m.id, "sw")}
-                            className="absolute -bottom-2 -left-2 w-4 h-4 bg-blue-500 cursor-sw-resize rounded-full"
-                            style={{ pointerEvents: "auto" }}
-                          />
-                          {/* Left center */}
-                          <div
-                            onMouseDown={(e) => handleResizeStart(e, m.id, "w")}
-                            className="absolute top-1/2 -left-2 -translate-y-1/2 w-4 h-4 bg-blue-500 cursor-ew-resize rounded-full"
-                            style={{ pointerEvents: "auto" }}
-                          />
-                        </>
-                      )}
-                      {/* Bottom-right corner - visible in both modes */}
-                      <div
-                        onMouseDown={(e) => handleResizeStart(e, m.id, "se")}
-                        className="absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 cursor-se-resize rounded-full"
-                        style={{ pointerEvents: "auto" }}
-                      />
-                    </>
-                  )}
-                </>
-              ) : (
-                <video
-                  src={m.url}
-                  controls
-                  className="w-full h-full rounded-lg block"
-                />
-              )}
+                    {/* Resize handles */}
+                    {selectedItem === m.id && resizeMode[m.id] && (
+                      <>
+                        {resizeMode[m.id] === 'resize' && (
+                          <>
+                            <div onMouseDown={(e) => handleResizeStart(e, m.id, "nw")} className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 cursor-nwse-resize rounded-full" style={{ pointerEvents: "auto" }} />
+                            <div onMouseDown={(e) => handleResizeStart(e, m.id, "n")} className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-blue-500 cursor-ns-resize rounded-full" style={{ pointerEvents: "auto" }} />
+                            <div onMouseDown={(e) => handleResizeStart(e, m.id, "ne")} className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 cursor-nesw-resize rounded-full" style={{ pointerEvents: "auto" }} />
+                            <div onMouseDown={(e) => handleResizeStart(e, m.id, "e")} className="absolute top-1/2 -right-2 -translate-y-1/2 w-4 h-4 bg-blue-500 cursor-ew-resize rounded-full" style={{ pointerEvents: "auto" }} />
+                            <div onMouseDown={(e) => handleResizeStart(e, m.id, "s")} className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-blue-500 cursor-ns-resize rounded-full" style={{ pointerEvents: "auto" }} />
+                            <div onMouseDown={(e) => handleResizeStart(e, m.id, "sw")} className="absolute -bottom-2 -left-2 w-4 h-4 bg-blue-500 cursor-sw-resize rounded-full" style={{ pointerEvents: "auto" }} />
+                            <div onMouseDown={(e) => handleResizeStart(e, m.id, "w")} className="absolute top-1/2 -left-2 -translate-y-1/2 w-4 h-4 bg-blue-500 cursor-ew-resize rounded-full" style={{ pointerEvents: "auto" }} />
+                          </>
+                        )}
+                        <div onMouseDown={(e) => handleResizeStart(e, m.id, "se")} className="absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 cursor-se-resize rounded-full" style={{ pointerEvents: "auto" }} />
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <video src={m.url} controls className="w-full h-full rounded-lg block" />
+                )}
 
-              {/* z-value badge */}
-              <div className="absolute left-1 top-1 bg-black/60 text-white text-xs px-1 rounded">
-                Z: {m.z ?? 0}
+                <div className="absolute left-1 top-1 bg-black/60 text-white text-xs px-1 rounded">
+                  Z: {m.z ?? 0}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+        </div>
       </div>
 
       {selectedItem && (
@@ -532,84 +515,13 @@ export default function StepContent({
       {contextMenu && (
         <div style={{ position: "fixed", top: contextMenu.y, left: contextMenu.x }} className="z-[9999] min-w-[160px] rounded-md overflow-hidden">
           <div style={{ background: "#0f1724", border: "1px solid #374151", boxShadow: "0 6px 18px rgba(2,6,23,0.6)" }}>
-            <button
-              onClick={() => {
-                handleDelete(contextMenu.mediaId);
-                setContextMenu(null);
-              }}
-              onMouseDown={(e) => e.preventDefault()}
-              className="block w-full text-left px-4 py-2 text-sm text-slate-100 hover:bg-white/5 border-b border-slate-700"
-            >
-              Delete
-            </button>
-            <button
-              onClick={() => {
-                setResizeMode((prev) => ({
-                  ...prev,
-                  [contextMenu.mediaId]: prev[contextMenu.mediaId] === 'scale' ? null : 'scale',
-                }));
-                setContextMenu(null); // <-- voeg dit toe
-              }}
-              onMouseDown={(e) => e.preventDefault()}
-              className="block w-full text-left px-4 py-2 text-sm text-slate-100 hover:bg-white/5 border-b border-slate-700"
-            >
-              {resizeMode[contextMenu.mediaId] === 'scale' ? "✓ " : ""}Scale
-            </button>
-
-            <button
-              onClick={() => {
-                setResizeMode((prev) => ({
-                  ...prev,
-                  [contextMenu.mediaId]: prev[contextMenu.mediaId] === 'resize' ? null : 'resize',
-                }));
-                setContextMenu(null); // <-- voeg dit toe
-              }}
-              onMouseDown={(e) => e.preventDefault()}
-              className="block w-full text-left px-4 py-2 text-sm text-slate-100 hover:bg-white/5 border-b border-slate-700"
-            >
-              {resizeMode[contextMenu.mediaId] === 'resize' ? "✓ " : ""}Resize
-            </button>
-
-            <button
-              onClick={() => {
-                updateLayer(contextMenu.mediaId, "front");
-                setContextMenu(null);
-              }}
-              onMouseDown={(e) => e.preventDefault()}
-              className="block w-full text-left px-4 py-2 text-sm text-slate-100 hover:bg-white/5"
-            >
-              Bring to Front
-            </button>
-            <button
-              onClick={() => {
-                updateLayer(contextMenu.mediaId, "forward");
-                setContextMenu(null);
-              }}
-              onMouseDown={(e) => e.preventDefault()}
-              className="block w-full text-left px-4 py-2 text-sm text-slate-100 hover:bg-white/5"
-            >
-              Bring Forward
-            </button>
-            <button
-              onClick={() => {
-                updateLayer(contextMenu.mediaId, "backward");
-                setContextMenu(null);
-              }}
-              onMouseDown={(e) => e.preventDefault()}
-              className="block w-full text-left px-4 py-2 text-sm text-slate-100 hover:bg-white/5"
-            >
-              Send Backward
-            </button>
-            <button
-              onClick={() => {
-                updateLayer(contextMenu.mediaId, "back");
-                setContextMenu(null);
-              }}
-              onMouseDown={(e) => e.preventDefault()}
-              className="block w-full text-left px-4 py-2 text-sm text-slate-100 hover:bg-white/5"
-            >
-              Send to Back
-            </button>
+            <button onClick={() => { handleDelete(contextMenu.mediaId); setContextMenu(null); }} onMouseDown={(e) => e.preventDefault()} className="block w-full text-left px-4 py-2 text-sm text-slate-100 hover:bg-white/5 border-b border-slate-700">Delete</button>
+            <button onClick={() => { setResizeMode((prev) => ({ ...prev, [contextMenu.mediaId]: prev[contextMenu.mediaId] === 'scale' ? null : 'scale' })); setContextMenu(null); }} onMouseDown={(e) => e.preventDefault()} className="block w-full text-left px-4 py-2 text-sm text-slate-100 hover:bg-white/5 border-b border-slate-700">{resizeMode[contextMenu.mediaId] === 'scale' ? "✓ " : ""}Scale</button>
+            <button onClick={() => { setResizeMode((prev) => ({ ...prev, [contextMenu.mediaId]: prev[contextMenu.mediaId] === 'resize' ? null : 'resize' })); setContextMenu(null); }} onMouseDown={(e) => e.preventDefault()} className="block w-full text-left px-4 py-2 text-sm text-slate-100 hover:bg-white/5 border-b border-slate-700">{resizeMode[contextMenu.mediaId] === 'resize' ? "✓ " : ""}Resize</button>
+            <button onClick={() => { updateLayer(contextMenu.mediaId, "front"); setContextMenu(null); }} onMouseDown={(e) => e.preventDefault()} className="block w-full text-left px-4 py-2 text-sm text-slate-100 hover:bg-white/5">Bring to Front</button>
+            <button onClick={() => { updateLayer(contextMenu.mediaId, "forward"); setContextMenu(null); }} onMouseDown={(e) => e.preventDefault()} className="block w-full text-left px-4 py-2 text-sm text-slate-100 hover:bg-white/5">Bring Forward</button>
+            <button onClick={() => { updateLayer(contextMenu.mediaId, "backward"); setContextMenu(null); }} onMouseDown={(e) => e.preventDefault()} className="block w-full text-left px-4 py-2 text-sm text-slate-100 hover:bg-white/5">Send Backward</button>
+            <button onClick={() => { updateLayer(contextMenu.mediaId, "back"); setContextMenu(null); }} onMouseDown={(e) => e.preventDefault()} className="block w-full text-left px-4 py-2 text-sm text-slate-100 hover:bg-white/5">Send to Back</button>
           </div>
         </div>
       )}
