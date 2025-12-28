@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
         author: { connect: { id: author.id } },
         steps: {
           create: [
-            { content: "First step", order: 1 }
+            { content: "", order: 1 }
           ],
         },
       },

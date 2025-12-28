@@ -7,6 +7,7 @@ interface Props {
   onPrevious: () => void;
   onDelete: () => void;
   onHome: () => void;
+  onPreview: () => void;
 }
 
 export default function StepNavigationFooter({
@@ -16,6 +17,7 @@ export default function StepNavigationFooter({
   onPrevious,
   onDelete,
   onHome,
+  onPreview,
 }: Props) {
   return (
     <div style={{ display: "flex", gap: 8 }}>
@@ -29,6 +31,10 @@ export default function StepNavigationFooter({
 
       <button onClick={onDelete} style={{ color: "red" }}>
         Delete Step
+      </button>
+
+      <button onClick={onPreview}>
+        Preview Step
       </button>
 
       <button onClick={onHome}>

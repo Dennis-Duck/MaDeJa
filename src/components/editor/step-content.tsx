@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import type { Step, MediaType } from "@/types/step";
 import StepContextMenu from "./step-context-menu";
+import Image from "next/image";
 
 interface StepContentProps {
   step: Step;
@@ -355,19 +356,6 @@ export default function StepContent({
     setSelectedItem(mediaId);
   }
 
-  function handleZoomStart(e: React.MouseEvent, mediaId: string) {
-    e.preventDefault();
-    // Removed zoom functionality - using resize instead
-  }
-
-  function handleZoomMove(e: React.MouseEvent) {
-    // Removed zoom functionality - using resize instead
-  }
-
-  function handleZoomEnd() {
-    // Removed zoom functionality - using resize instead
-  }
-
   function handleMouseMove(e: React.MouseEvent) {
     if (resizingItem) {
       handleResizeMove(e);
@@ -409,8 +397,13 @@ export default function StepContent({
       </p>
 
       <div
-        className="relative w-full bg-muted/20 rounded-lg border border-border"
-        style={{ height: "600px" }}
+        className="relative bg-muted/20 rounded-lg border border-border mx-auto"
+        style={{
+    width: "1920px",
+    height: "1080px",
+    maxWidth: "90vw",
+    maxHeight: "80vh",
+        }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
@@ -441,11 +434,13 @@ export default function StepContent({
             >
               {m.type === "IMAGE" ? (
                 <>
-                  <img
+                  <Image
                     src={m.url || "/placeholder.svg"}
                     alt="Step media"
-                    className="w-full h-full rounded-lg object-cover block pointer-events-none select-none"
+                    fill
+                    className="rounded-lg object-cover pointer-events-none select-none"
                     draggable={false}
+                    unoptimized={m.url?.startsWith('http')} // Als externe URLs
                   />
                   <button
                     onClick={() => handleDelete(m.id)}

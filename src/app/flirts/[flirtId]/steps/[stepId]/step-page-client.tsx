@@ -65,6 +65,11 @@ export default function StepPageClient({
           onPrevious={() => previous()}
           onDelete={handleDelete}
           onHome={() => router.push("/")}
+          onPreview={() =>
+            router.push(
+              `/flirts/${initialFlirtId}/steps/${step.id}/preview`
+            )
+          }
         />
       }
     />
