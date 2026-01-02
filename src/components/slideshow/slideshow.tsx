@@ -15,11 +15,32 @@ interface SlideshowProps {
 export default function Slideshow({ steps, maxHeight }: SlideshowProps) {
   const [current, setCurrent] = useState(0);
   const [scale, setScale] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const nextSlide = () => setCurrent((prev) => (prev + 1) % steps.length);
   const prevSlide = () =>
     setCurrent((prev) => (prev - 1 + steps.length) % steps.length);
+
+  const enterFullscreen = () => {
+    if (!containerRef.current) return;
+
+    if (containerRef.current.requestFullscreen) {
+      containerRef.current.requestFullscreen();
+    }
+  };
+
+  const exitFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
 
   useEffect(() => {
     const updateScale = () => {
@@ -52,8 +73,8 @@ export default function Slideshow({ steps, maxHeight }: SlideshowProps) {
   if (steps.length === 0) {
     return (
       <div
-        className="relative w-full bg-gray-900 rounded-lg flex items-center justify-center"
-        style={{ aspectRatio: `${CANVAS_WIDTH}/${CANVAS_HEIGHT}`, maxHeight: maxHeight || "80vh" }}
+        className="relative w-full rounded-lg flex items-center justify-center"
+        style={{ aspectRatio: `${CANVAS_WIDTH}/${CANVAS_HEIGHT}`, maxHeight: maxHeight || "100vh" }}
       >
         <p className="text-white/50">Geen media beschikbaar</p>
       </div>
@@ -63,11 +84,18 @@ export default function Slideshow({ steps, maxHeight }: SlideshowProps) {
   return (
     <div
       ref={containerRef}
-      className="relative w-full overflow-hidden mx-auto bg-gray-900"
-      style={{ aspectRatio: `${CANVAS_WIDTH}/${CANVAS_HEIGHT}`, maxHeight: maxHeight || "80vh" }}
+      className="relative w-full overflow-hidden mx-auto"
+      style={{ aspectRatio: `${CANVAS_WIDTH}/${CANVAS_HEIGHT}`, maxHeight: maxHeight || "100vh" }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      <button
+        onClick={isFullscreen ? exitFullscreen : enterFullscreen}
+        className="absolute top-2 right-2 z-20 text-white px-3 py-1 rounded hover:bg-black/70 transition-colors"
+        aria-label="Fullscreen"
+      >
+        {isFullscreen ? "⤫" : "⛶"}
+      </button>
       <div
         className="absolute top-1/2 left-1/2"
         style={{
@@ -80,9 +108,8 @@ export default function Slideshow({ steps, maxHeight }: SlideshowProps) {
         {steps.map((stepMedia, index) => (
           <div
             key={index}
-            className={`absolute top-0 left-0 w-full h-full transition-opacity duration-500 ${
-              index === current ? "opacity-100" : "opacity-0"
-            }`}
+            className={`absolute top-0 left-0 w-full h-full transition-opacity duration-500 ${index === current ? "opacity-100" : "opacity-0"
+              }`}
           >
             {stepMedia
               .sort((a: Media, b: Media) => (a.z ?? 0) - (b.z ?? 0))
@@ -138,9 +165,8 @@ export default function Slideshow({ steps, maxHeight }: SlideshowProps) {
             <button
               key={index}
               onClick={() => setCurrent(index)}
-              className={`w-2 h-2 rounded-full transition-all ${
-                index === current ? "bg-white w-8" : "bg-white/50 hover:bg-white/75"
-              }`}
+              className={`w-2 h-2 rounded-full transition-all ${index === current ? "bg-white w-8" : "bg-white/50 hover:bg-white/75"
+                }`}
               aria-label={`Ga naar slide ${index + 1}`}
             />
           ))}

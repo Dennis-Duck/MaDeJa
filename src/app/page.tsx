@@ -1,6 +1,7 @@
 import FlirtsList from "@/components/flirts/flirts-list";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import ThemeSwitcher from "@/components/ui/theme-switcher";
 
 export default async function Home() {
   const flirts = await prisma.flirt.findMany({
@@ -17,6 +18,7 @@ export default async function Home() {
         Start Wizard
       </Link>
       <FlirtsList initialFlirts={flirts} />
+      <ThemeSwitcher />
     </div>
   );
 }
