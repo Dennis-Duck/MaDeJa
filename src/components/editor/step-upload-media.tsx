@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -70,10 +71,10 @@ export default function UploadPic({ stepId, onUploadComplete }: UploadPicProps) 
   };
 
   return (
-    <div className="flex flex-col gap-2 max-w-sm p-2 border rounded shadow-sm">
+    <div className="flex flex-col gap-2 max-w-sm p-2 border border-[var(--border)] rounded shadow-sm bg-[var(--background-secondary)] text-[var(--foreground)]">
       <label
         htmlFor="file-upload"
-        className="cursor-pointer py-2 px-4 rounded hover:bg-gray-300 text-center"
+        className="cursor-pointer py-2 px-4 rounded text-center border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--hover-bg)] hover:border-[var(--accent)] transition-colors duration-150"
       >
         Choose File
       </label>
@@ -85,12 +86,12 @@ export default function UploadPic({ stepId, onUploadComplete }: UploadPicProps) 
         style={{ display: "none" }}
       />
 
-      <div className="text-gray-500 text-sm text-center p-1 border rounded">
+      <div className="text-[var(--foreground-muted)] text-sm text-center p-1 border border-[var(--border)] rounded">
         {file ? file.name : "No file chosen"}
       </div>
 
       {preview && (
-        <div className="border rounded p-1 bg-gray-50 text-center">
+        <div className="border border-[var(--border)] rounded p-1 bg-[var(--background)] text-center">
           {file?.type.startsWith("image/") ? (
             <img src={preview} alt="Preview" className="max-w-full rounded" />
           ) : (
@@ -102,7 +103,7 @@ export default function UploadPic({ stepId, onUploadComplete }: UploadPicProps) 
       <button
         onClick={handleUpload}
         disabled={!file}
-        className="py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:cursor-not-allowed"
+        className="py-2 px-4 rounded bg-[var(--accent)] text-[var(--foreground)] hover:bg-[var(--hover-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Upload
       </button>

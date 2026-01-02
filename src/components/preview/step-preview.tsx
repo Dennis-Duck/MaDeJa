@@ -1,11 +1,12 @@
-"use client"
 
-import type { Step } from "@/types/step"
-import Image from "next/image"
-import { useState } from "react"
+"use client";
+
+import type { Step } from "@/types/step";
+import Image from "next/image";
+import { useState, useRef, useEffect } from "react";
 
 interface StepPreviewProps {
-  step: Step
+  step: Step;
 }
 
 // Vooraf ingestelde viewport groottes
@@ -13,35 +14,53 @@ const VIEWPORT_PRESETS = {
   mobile: { width: 375, height: 667, label: "Mobile (9:16)" },
   tablet: { width: 768, height: 1024, label: "Tablet (3:4)" },
   desktop: { width: 1920, height: 1080, label: "Desktop (16:9)" },
-} as const
+} as const;
 
-type ViewportPreset = keyof typeof VIEWPORT_PRESETS
+type ViewportPreset = keyof typeof VIEWPORT_PRESETS;
 
-// Canvas = "wereldruimte" van je editor
-const CANVAS_SIZE = { width: 1920, height: 1080 }
+// Canvas = "wereldruimte" van je editor (net zoals in Slideshow)
+const CANVAS_WIDTH = 1920;
+const CANVAS_HEIGHT = 1080;
 
 export default function StepPreview({ step }: StepPreviewProps) {
-  const [viewportPreset, setViewportPreset] = useState<ViewportPreset>("mobile")
-  const viewport = VIEWPORT_PRESETS[viewportPreset]
+  const [viewportPreset, setViewportPreset] = useState<ViewportPreset>("desktop");
+  const [scale, setScale] = useState(1);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Schaal factor om canvas volledig in viewport te fitten
-  const scaleX = viewport.width / CANVAS_SIZE.width
-  const scaleY = viewport.height / CANVAS_SIZE.height
-  const scale = Math.min(scaleX, scaleY)
+  const viewport = VIEWPORT_PRESETS[viewportPreset];
+
+  // Bereken scale net zoals in Slideshow
+  useEffect(() => {
+    const updateScale = () => {
+      if (!containerRef.current) return;
+      const containerWidth = containerRef.current.offsetWidth;
+      const containerHeight = containerRef.current.offsetHeight;
+      const scaleX = containerWidth / CANVAS_WIDTH;
+      const scaleY = containerHeight / CANVAS_HEIGHT;
+      setScale(Math.min(scaleX, scaleY));
+    };
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    const timer = setTimeout(updateScale, 100);
+    return () => {
+      window.removeEventListener("resize", updateScale);
+      clearTimeout(timer);
+    };
+  }, [viewportPreset]);
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gray-100 p-5 gap-5">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[var(--background)] p-5 gap-5">
       {/* Viewport selector */}
       <div className="flex gap-3 flex-wrap justify-center">
         {(Object.keys(VIEWPORT_PRESETS) as ViewportPreset[]).map((preset) => (
           <button
             key={preset}
             onClick={() => setViewportPreset(preset)}
-            className={`px-4 py-2 rounded-lg font-medium transition-all ${
+            className={
               viewportPreset === preset
-                ? "bg-blue-600 text-white border-2 border-blue-500"
-                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-            }`}
+                ? "px-4 py-2 rounded-lg font-medium transition-all bg-[var(--accent)] text-[var(--foreground)] border-2 border-[var(--hover-border)]"
+                : "px-4 py-2 rounded-lg font-medium transition-all bg-[var(--background-secondary)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)]"
+            }
           >
             {VIEWPORT_PRESETS[preset].label}
           </button>
@@ -49,13 +68,14 @@ export default function StepPreview({ step }: StepPreviewProps) {
       </div>
 
       {/* Viewport info */}
-      <div className="text-gray-600 text-sm text-center">
+      <div className="text-[var(--foreground-muted)] text-sm text-center">
         Viewport: {viewport.width} × {viewport.height}px (Scale: {(scale * 100).toFixed(0)}%)
       </div>
 
-      {/* Viewport container */}
+      {/* Viewport container - net zoals in Slideshow */}
       <div
-        className="relative bg-black rounded-xl shadow-2xl overflow-hidden border-4 border-gray-900"
+        ref={containerRef}
+        className="relative rounded-xl shadow-2xl overflow-hidden border-4 border-[var(--border)] mx-auto bg-[var(--background-secondary)]"
         style={{
           width: viewport.width,
           height: viewport.height,
@@ -63,56 +83,49 @@ export default function StepPreview({ step }: StepPreviewProps) {
           maxHeight: "80vh",
         }}
       >
-        {/* Canvas = world space */}
+        {/* Canvas container met scale transformatie */}
         <div
-          className="absolute top-0 left-0 bg-black"
+          className="absolute top-1/2 left-1/2 bg-[var(--background-secondary)]"
           style={{
-            width: CANVAS_SIZE.width,
-            height: CANVAS_SIZE.height,
-            transform: `scale(${scale})`,
-            transformOrigin: "top left",
+            width: CANVAS_WIDTH,
+            height: CANVAS_HEIGHT,
+            transform: `translate(-50%, -50%) scale(${scale})`,
+            transformOrigin: "center center",
           }}
         >
           {/* Media-items */}
-         {step.media
-  .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
-  .map((m) => {
-    const x = m.x ?? 0
-    const y = m.y ?? 0
-    const width = m.width ?? 300
-    const height = m.height ?? 300
-
-    return (
-      <div
-        key={m.id}
-        className="absolute"
-        style={{
-          left: `${(x / CANVAS_SIZE.width) * 100}%`,
-          top: `${(y / CANVAS_SIZE.height) * 100}%`,
-          width: `${(width / CANVAS_SIZE.width) * 100}%`,
-          height: `${(height / CANVAS_SIZE.height) * 100}%`,
-          zIndex: m.z ?? 0,
-        }}
-      >
-        {m.type === "IMAGE" ? (
-          <Image
-            src={m.url}
-            alt="Step media"
-            fill
-            className="rounded-lg object-cover pointer-events-none select-none"
-            style={{ objectFit: "cover" }}
-            unoptimized={m.url?.startsWith("http")}
-          />
-        ) : (
-          <video
-            src={m.url}
-            style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "8px" }}
-            controls
-          />
-        )}
-      </div>
-    )
-  })}
+          {step.media
+            .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
+            .map((m) => (
+              <div
+                key={m.id}
+                className="absolute"
+                style={{
+                  left: m.x ?? 0,
+                  top: m.y ?? 0,
+                  width: m.width ?? 300,
+                  height: m.height ?? 300,
+                  zIndex: m.z ?? 0,
+                }}
+              >
+                {m.type === "IMAGE" ? (
+                  <Image
+                    src={m.url}
+                    alt="Step media"
+                    fill
+                    style={{ objectFit: "cover", objectPosition: "center" }}
+                    unoptimized={m.url?.startsWith("http")}
+                  />
+                ) : (
+                  <video
+                    src={m.url}
+                    controls
+                    className="absolute"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                )}
+              </div>
+            ))}
 
           {/* Text content */}
           {step.content && (
@@ -123,7 +136,7 @@ export default function StepPreview({ step }: StepPreviewProps) {
                 left: 20,
                 right: 20,
                 textAlign: "center",
-                color: "white",
+                color: "var(--foreground)",
                 fontSize: 18,
                 textShadow: "0 2px 4px rgba(0,0,0,0.8)",
               }}
@@ -134,10 +147,10 @@ export default function StepPreview({ step }: StepPreviewProps) {
         </div>
 
         {/* Viewport indicator */}
-        <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded pointer-events-none z-50">
+        <div className="absolute top-2 left-2 rounded pointer-events-none z-50 text-xs px-2 py-1" style={{ background: "var(--hover-bg)", color: "var(--foreground)" }}>
           {viewport.width}×{viewport.height}
         </div>
       </div>
     </div>
-  )
+  );
 }

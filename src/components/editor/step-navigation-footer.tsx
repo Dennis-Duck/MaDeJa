@@ -1,3 +1,4 @@
+
 "use client";
 
 interface Props {
@@ -20,24 +21,45 @@ export default function StepNavigationFooter({
   onPreview,
 }: Props) {
   return (
-    <div style={{ display: "flex", gap: 8 }}>
-      <button onClick={onPrevious} disabled={stepOrder === 1}>
+    <div className="flex gap-2">
+      {/* Previous */}
+      <button
+        onClick={onPrevious}
+        disabled={stepOrder === 1}
+        className="px-3 py-1 rounded bg-[var(--background-secondary)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+      >
         Previous
       </button>
 
-      <button onClick={onNext}>
+      {/* Next / Create */}
+      <button
+        onClick={onNext}
+        className="px-3 py-1 rounded bg-[var(--background-secondary)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+      >
         {isLast ? "Create new Step" : "Next"}
       </button>
 
-      <button onClick={onDelete} style={{ color: "red" }}>
+      {/* Delete Step */}
+      <button
+        onClick={onDelete}
+        className="px-3 py-1 rounded bg-red-500 text-white border border-red-700 hover:bg-red-600 transition-colors duration-150"
+      >
         Delete Step
       </button>
 
-      <button onClick={onPreview}>
+      {/* Preview Step */}
+      <button
+        onClick={onPreview}
+        className="px-3 py-1 rounded bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] hover:text-[var(--foreground)] transition-colors duration-150"
+      >
         Preview Step
       </button>
 
-      <button onClick={onHome}>
+      {/* Home */}
+      <button
+        onClick={onHome}
+        className="px-3 py-1 rounded bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] hover:text-[var(--foreground)] transition-colors duration-150"
+      >
         Home
       </button>
     </div>

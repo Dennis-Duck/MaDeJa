@@ -1,28 +1,73 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0f172a; 
-  --foreground: #e5e7eb; 
+  --background: #f3f4f6;
+  --foreground: #111827; 
+
+  --background-secondary: #576074; 
+  --foreground-muted: #b1b3b9; 
+
+  --border: #d1d5db; 
+  --accent: #64748b;
+
+  --hover-bg: rgba(156, 169, 186, 0.18); 
+  --hover-border: rgba(100, 116, 139, 0.25);
 }
 
 html[data-theme="dark"] {
   --background: #020617;
   --foreground: #f8fafc;
+
+  --background-secondary: #020617;
+  --foreground-muted: #94a3b8;
+
+  --border: #1e293b;
+  --accent: #7c3aed;
+
+  --hover-bg: rgba(124, 58, 237, 0.20);
+  --hover-border: rgba(255, 255, 255, 0.1);
 }
 
 html[data-theme="blue"] {
   --background: #0f172a;
   --foreground: #e5e7eb;
+
+  --background-secondary: #1e293b;
+  --foreground-muted: #9ca3af;
+
+  --border: #334155;
+  --accent: #38bdf8;
+
+  --hover-bg: rgba(56, 189, 248, 0.22);
+  --hover-border: rgba(56, 189, 248, 0.2);
 }
 
-html[data-theme="dim"] {
-  --background: #020617;
+html[data-theme="grey"] {
+  --background: #3d3f44;
   --foreground: #cbd5f5;
+
+  --background-secondary: #4a4d53;
+  --foreground-muted: #aab1d6;
+
+  --border: #5c6070;
+  --accent: #9aa5ff;
+
+  --hover-bg: rgba(186, 189, 212, 0.272);
+  --hover-border: rgba(154, 165, 255, 0.25);
 }
 
 html[data-theme="erotic"] {
-  --background: #0a0612;
+  --background: #541836;
   --foreground: #f3e8ff;
+
+  --background-secondary: #3a0f24;
+  --foreground-muted: #e9d5ff;
+
+  --border: #6b2148;
+  --accent: #ec4899;
+
+  --hover-bg: rgba(236, 72, 153, 0.18);
+  --hover-border: rgba(236, 72, 153, 0.4);
 }
 
 @theme inline {

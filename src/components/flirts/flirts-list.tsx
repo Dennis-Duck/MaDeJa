@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -40,12 +41,12 @@ export default function FlirtsList({ initialFlirts }: { initialFlirts: Flirt[] }
                 ({flirt.steps.length} {flirt.steps.length === 1 ? "step" : "steps"})
               </span>
             </span>
+
             <div className="flex gap-2">
               {firstStep && (
-
                 <Link
                   href={`/flirts/${flirt.id}/steps/${firstStep.id}`}
-                  className="px-2 py-1 bg-yellow-400 text-black rounded hover:bg-yellow-500"
+                  className="px-2 py-1 rounded bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] hover:text-[var(--foreground)] transition-colors duration-150"
                 >
                   Edit
                 </Link>
@@ -53,18 +54,17 @@ export default function FlirtsList({ initialFlirts }: { initialFlirts: Flirt[] }
 
               <Link
                 href={`/flirts/${flirt.id}/slideshow`}
-                className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                className="px-2 py-1 rounded bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] hover:text-[var(--foreground)] transition-colors duration-150"
               >
                 Slideshow
               </Link>
 
               <button
                 onClick={() => handleDelete(flirt.id)}
-                className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                className="px-3 py-1 rounded bg-red-500 text-white border border-red-700 hover:bg-red-600 transition-colors duration-150"
               >
                 Delete
               </button>
-              
             </div>
           </li>
         );
