@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ResizeHandles } from "./resize-handles";
+import { ResizeHandles } from "../resize-handles";
 
 interface MediaItemProps {
   id: string;

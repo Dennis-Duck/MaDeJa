@@ -19,10 +19,8 @@ export const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
         ref={ref}
         className="relative bg-muted/20 rounded-lg border border-border mx-auto overflow-hidden"
         style={{
-          aspectRatio: `${width}/${height}`,
-          maxHeight: "80vh",
-          width: "100%",
-          maxWidth: "90vw",
+          width: `min(90vw, ${(80 * width) / height}vh)`,
+          height: `min(80vh, ${(90 * height) / width}vw)`,
         }}
         onClick={onClick}
       >

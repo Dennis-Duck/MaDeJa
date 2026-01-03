@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { Step } from "@/types/step";
 import { Canvas } from "./canvas/canvas";
-import { MediaItem } from "./canvas/media-item";
+import { MediaItem } from "./canvas/elements/media";
 import { ContextMenu } from "./canvas/context-menu";
 import { useCanvasScale } from "@/app/hooks/use-canvas-scale";
 import { useCanvasInteraction } from "@/app/hooks/use-canvas-interaction";
@@ -157,7 +157,6 @@ export default function StepContent({
   // Canvas interaction hook
   const {
     draggedItem,
-    resizingItem,
     startDrag,
     startResize,
     handleMove,
