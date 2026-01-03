@@ -1,78 +1,79 @@
+"use client"
 
-"use client";
+import type React from "react"
 
-import { useState, useRef, useEffect } from "react";
-import { Media } from "@/types/media";
-import Image from "next/image";
+import { useState, useRef, useEffect } from "react"
+import type { Media } from "@/types/media"
+import Image from "next/image"
 
-const CANVAS_WIDTH = 1920;
-const CANVAS_HEIGHT = 1080;
+const CANVAS_WIDTH = 1920
+const CANVAS_HEIGHT = 1080
 
 interface SlideshowProps {
-  steps: Media[][]; // elke step bevat meerdere media
-  maxHeight?: string;
-  topStrip?: number; // hoogte van de bovenrand (px) die zichtbaar blijft
+  steps: Media[][] // elke step bevat meerdere media
+  maxHeight?: string
+  topStrip?: number // hoogte van de bovenrand (px) die zichtbaar blijft
 }
 
-export default function Slideshow({ steps, maxHeight, topStrip = 40 }: SlideshowProps) {
-  const [current, setCurrent] = useState(0);
-  const [scale, setScale] = useState(1);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+export default function Slideshow({ steps, maxHeight, topStrip = 0}: SlideshowProps) {
+  const [current, setCurrent] = useState(0)
+  const [scale, setScale] = useState(1)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  const nextSlide = () => setCurrent((prev) => (prev + 1) % steps.length);
-  const prevSlide = () => setCurrent((prev) => (prev - 1 + steps.length) % steps.length);
+  const nextSlide = () => setCurrent((prev) => (prev + 1) % steps.length)
+  const prevSlide = () => setCurrent((prev) => (prev - 1 + steps.length) % steps.length)
 
-  const effectiveTopStrip = isFullscreen ? 0 : topStrip;
+  const effectiveTopStrip = isFullscreen ? 0 : topStrip
 
   const enterFullscreen = () => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) return
     if (containerRef.current.requestFullscreen) {
-      containerRef.current.requestFullscreen();
+      containerRef.current.requestFullscreen()
     }
-  };
+  }
 
   const exitFullscreen = () => {
     if (document.fullscreenElement) {
-      document.exitFullscreen();
+      document.exitFullscreen()
     }
-  };
+  }
 
   useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
+    const handler = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener("fullscreenchange", handler)
+    return () => document.removeEventListener("fullscreenchange", handler)
+  }, [])
 
   // Scale gebaseerd op beschikbare ruimte, met topStrip "window" hoogte
   useEffect(() => {
     const updateScale = () => {
-      if (!containerRef.current) return;
-      const containerWidth = containerRef.current.offsetWidth;
-      const containerHeight = containerRef.current.offsetHeight;
-      const availableHeight = Math.max(containerHeight - topStrip, 0); // ruimte voor canvas window
-      const scaleX = containerWidth / CANVAS_WIDTH;
-      const scaleY = availableHeight / CANVAS_HEIGHT;
-      setScale(Math.min(scaleX, scaleY)); // contain: geen cropping
-    };
-    updateScale();
-    window.addEventListener("resize", updateScale);
-    const timer = setTimeout(updateScale, 100);
+      if (!containerRef.current) return
+      const containerWidth = containerRef.current.offsetWidth
+      const containerHeight = containerRef.current.offsetHeight
+      const availableHeight = Math.max(containerHeight - effectiveTopStrip, 0) // ruimte voor canvas window
+      const scaleX = containerWidth / CANVAS_WIDTH
+      const scaleY = availableHeight / CANVAS_HEIGHT
+      setScale(Math.min(scaleX, scaleY)) // contain: geen cropping
+    }
+    updateScale()
+    window.addEventListener("resize", updateScale)
+    const timer = setTimeout(updateScale, 100)
     return () => {
-      window.removeEventListener("resize", updateScale);
-      clearTimeout(timer);
-    };
-  }, [topStrip]);
+      window.removeEventListener("resize", updateScale)
+      clearTimeout(timer)
+    }
+  }, [effectiveTopStrip, isFullscreen])
 
-  const startX = useRef(0);
+  const startX = useRef(0)
   const handleTouchStart = (e: React.TouchEvent) => {
-    startX.current = e.touches[0].clientX;
-  };
+    startX.current = e.touches[0].clientX
+  }
   const handleTouchEnd = (e: React.TouchEvent) => {
-    const endX = e.changedTouches[0].clientX;
-    if (startX.current - endX > 50) nextSlide();
-    else if (endX - startX.current > 50) prevSlide();
-  };
+    const endX = e.changedTouches[0].clientX
+    if (startX.current - endX > 50) nextSlide()
+    else if (endX - startX.current > 50) prevSlide()
+  }
 
   if (steps.length === 0) {
     return (
@@ -82,8 +83,11 @@ export default function Slideshow({ steps, maxHeight, topStrip = 40 }: Slideshow
       >
         <p className="text-[var(--foreground-muted)]">Geen media beschikbaar</p>
       </div>
-    );
+    )
   }
+
+  const scaledWidth = CANVAS_WIDTH * scale
+  const scaledHeight = CANVAS_HEIGHT * scale
 
   return (
     <div
@@ -102,22 +106,19 @@ export default function Slideshow({ steps, maxHeight, topStrip = 40 }: Slideshow
         {isFullscreen ? "⤫" : "⛶"}
       </button>
 
-      {/* Window: neemt de beschikbare hoogte (containerHeight - topStrip) en ligt onderaan */}
       <div
-        className="absolute left-0 right-0 bottom-0"
+        className="absolute left-1/2 top-1/2"
         style={{
-          height: `calc(100% - ${effectiveTopStrip}px)`,
+          width: `${scaledWidth}px`,
+          height: `${scaledHeight}px`,
+          transform: "translate(-50%, -50%)",
           background: "var(--background-secondary)",
+          overflow: "hidden",
         }}
       >
-        {/* Canvas: onderaan uitlijnen en horizontaal centreren, met contain-scale */}
         <div
-          className="absolute left-1/2 bottom-0"
+          className="relative w-full h-full"
           style={{
-            width: CANVAS_WIDTH,
-            height: CANVAS_HEIGHT,
-            transform: `translateX(-50%) scale(${scale})`,
-            transformOrigin: "bottom center",
             background: "transparent",
           }}
         >
@@ -127,27 +128,26 @@ export default function Slideshow({ steps, maxHeight, topStrip = 40 }: Slideshow
               className={`absolute top-0 left-0 w-full h-full transition-opacity duration-500 ${index === current ? "opacity-100" : "opacity-0"}`}
             >
               {[...stepMedia]
-  .sort((a: Media, b: Media) => (a.z ?? 0) - (b.z ?? 0))
-  .map((m: Media) => 
-
+                .sort((a: Media, b: Media) => (a.z ?? 0) - (b.z ?? 0))
+                .map((m: Media) =>
                   m.type === "IMAGE" ? (
                     <div
                       key={m.id}
                       className="absolute"
                       style={{
-                        left: m.x ?? 0,
-                        top: m.y ?? 0,
-                        width: m.width ?? 300,
-                        height: m.height ?? 300,
+                        left: `${((m.x ?? 0) / CANVAS_WIDTH) * 100}%`,
+                        top: `${((m.y ?? 0) / CANVAS_HEIGHT) * 100}%`,
+                        width: `${((m.width ?? 300) / CANVAS_WIDTH) * 100}%`,
+                        height: `${((m.height ?? 300) / CANVAS_HEIGHT) * 100}%`,
                         zIndex: m.z ?? 0,
                       }}
                     >
                       <Image
-                        src={m.url}
+                        src={m.url || "/placeholder.svg"}
                         alt=""
                         fill
                         style={{ objectFit: "cover", objectPosition: "center" }}
-                        unoptimized={m.url.startsWith("http")}
+                        unoptimized={m.url?.startsWith("http")}
                       />
                     </div>
                   ) : (
@@ -157,15 +157,15 @@ export default function Slideshow({ steps, maxHeight, topStrip = 40 }: Slideshow
                       controls
                       className="absolute"
                       style={{
-                        left: m.x ?? 0,
-                        top: m.y ?? 0,
-                        width: m.width ?? 300,
-                        height: m.height ?? 300,
+                        left: `${((m.x ?? 0) / CANVAS_WIDTH) * 100}%`,
+                        top: `${((m.y ?? 0) / CANVAS_HEIGHT) * 100}%`,
+                        width: `${((m.width ?? 300) / CANVAS_WIDTH) * 100}%`,
+                        height: `${((m.height ?? 300) / CANVAS_HEIGHT) * 100}%`,
                         zIndex: m.z ?? 0,
                         objectFit: "cover",
                       }}
                     />
-                  )
+                  ),
                 )}
             </div>
           ))}
@@ -200,5 +200,5 @@ export default function Slideshow({ steps, maxHeight, topStrip = 40 }: Slideshow
         </div>
       )}
     </div>
-  );
+  )
 }

@@ -1,12 +1,11 @@
+"use client"
 
-"use client";
-
-import type { Step } from "@/types/step";
-import Image from "next/image";
-import { useState, useRef, useEffect } from "react";
+import type { Step } from "@/types/step"
+import Image from "next/image"
+import { useState, useRef, useEffect } from "react"
 
 interface StepPreviewProps {
-  step: Step;
+  step: Step
 }
 
 // Vooraf ingestelde viewport groottes
@@ -14,39 +13,43 @@ const VIEWPORT_PRESETS = {
   mobile: { width: 375, height: 667, label: "Mobile (9:16)" },
   tablet: { width: 768, height: 1024, label: "Tablet (3:4)" },
   desktop: { width: 1920, height: 1080, label: "Desktop (16:9)" },
-} as const;
+} as const
 
-type ViewportPreset = keyof typeof VIEWPORT_PRESETS;
+type ViewportPreset = keyof typeof VIEWPORT_PRESETS
 
 // Canvas = "wereldruimte" van je editor (net zoals in Slideshow)
-const CANVAS_WIDTH = 1920;
-const CANVAS_HEIGHT = 1080;
+const CANVAS_WIDTH = 1920
+const CANVAS_HEIGHT = 1080
 
 export default function StepPreview({ step }: StepPreviewProps) {
-  const [viewportPreset, setViewportPreset] = useState<ViewportPreset>("desktop");
-  const [scale, setScale] = useState(1);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [viewportPreset, setViewportPreset] = useState<ViewportPreset>("desktop")
+  const [scale, setScale] = useState(1)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  const viewport = VIEWPORT_PRESETS[viewportPreset];
+  const viewport = VIEWPORT_PRESETS[viewportPreset]
 
-  // Bereken scale net zoals in Slideshow
   useEffect(() => {
     const updateScale = () => {
-      if (!containerRef.current) return;
-      const containerWidth = containerRef.current.offsetWidth;
-      const containerHeight = containerRef.current.offsetHeight;
-      const scaleX = containerWidth / CANVAS_WIDTH;
-      const scaleY = containerHeight / CANVAS_HEIGHT;
-      setScale(Math.min(scaleX, scaleY));
-    };
-    updateScale();
-    window.addEventListener("resize", updateScale);
-    const timer = setTimeout(updateScale, 100);
+      if (!containerRef.current) return
+      const containerWidth = containerRef.current.offsetWidth
+      const containerHeight = containerRef.current.offsetHeight
+
+      // Scale the canvas (1920x1080) to fit the viewport
+      const scaleX = containerWidth / CANVAS_WIDTH
+      const scaleY = containerHeight / CANVAS_HEIGHT
+      setScale(Math.min(scaleX, scaleY))
+    }
+    updateScale()
+    window.addEventListener("resize", updateScale)
+    const timer = setTimeout(updateScale, 100)
     return () => {
-      window.removeEventListener("resize", updateScale);
-      clearTimeout(timer);
-    };
-  }, [viewportPreset]);
+      window.removeEventListener("resize", updateScale)
+      clearTimeout(timer)
+    }
+  }, [viewportPreset])
+
+  const scaledWidth = CANVAS_WIDTH * scale
+  const scaledHeight = CANVAS_HEIGHT * scale
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[var(--background)] p-5 gap-5">
@@ -69,88 +72,93 @@ export default function StepPreview({ step }: StepPreviewProps) {
 
       {/* Viewport info */}
       <div className="text-[var(--foreground-muted)] text-sm text-center">
-        Viewport: {viewport.width} × {viewport.height}px (Scale: {(scale * 100).toFixed(0)}%)
+        Canvas: {CANVAS_WIDTH} × {CANVAS_HEIGHT}px (Scale: {(scale * 100).toFixed(0)}%)
       </div>
 
-      {/* Viewport container - net zoals in Slideshow */}
       <div
         ref={containerRef}
-        className="relative rounded-xl shadow-2xl overflow-hidden border-4 border-[var(--border)] mx-auto bg-[var(--background-secondary)]"
+        className="relative bg-transparent rounded-xl overflow-hidden"
         style={{
-          width: viewport.width,
-          height: viewport.height,
+          width: `${viewport.width}px`,
+          height: `${viewport.height}px`,
           maxWidth: "90vw",
           maxHeight: "80vh",
         }}
       >
-        {/* Canvas container met scale transformatie */}
         <div
-          className="absolute top-1/2 left-1/2 bg-[var(--background-secondary)]"
+          className="absolute bg-[var(--background-secondary)] border-4 border-[var(--border)]"
           style={{
-            width: CANVAS_WIDTH,
-            height: CANVAS_HEIGHT,
-            transform: `translate(-50%, -50%) scale(${scale})`,
-            transformOrigin: "center center",
+            width: `${scaledWidth}px`,
+            height: `${scaledHeight}px`,
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            overflow: "hidden",
           }}
         >
-          {/* Media-items */}
           {step.media
             .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
-            .map((m) => (
-              <div
-                key={m.id}
-                className="absolute"
-                style={{
-                  left: m.x ?? 0,
-                  top: m.y ?? 0,
-                  width: m.width ?? 300,
-                  height: m.height ?? 300,
-                  zIndex: m.z ?? 0,
-                }}
-              >
-                {m.type === "IMAGE" ? (
-                  <Image
-                    src={m.url}
-                    alt="Step media"
-                    fill
-                    style={{ objectFit: "cover", objectPosition: "center" }}
-                    unoptimized={m.url?.startsWith("http")}
-                  />
-                ) : (
-                  <video
-                    src={m.url}
-                    controls
-                    className="absolute"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                )}
-              </div>
-            ))}
+            .map((m) => {
+              const leftPercent = ((m.x ?? 0) / CANVAS_WIDTH) * 100
+              const topPercent = ((m.y ?? 0) / CANVAS_HEIGHT) * 100
+              const widthPercent = ((m.width ?? 300) / CANVAS_WIDTH) * 100
+              const heightPercent = ((m.height ?? 300) / CANVAS_HEIGHT) * 100
+
+              return (
+                <div
+                  key={m.id}
+                  className="absolute"
+                  style={{
+                    left: `${leftPercent}%`,
+                    top: `${topPercent}%`,
+                    width: `${widthPercent}%`,
+                    height: `${heightPercent}%`,
+                    zIndex: m.z ?? 0,
+                  }}
+                >
+                  {m.type === "IMAGE" ? (
+                    <Image
+                      src={m.url || "/placeholder.svg"}
+                      alt="Step media"
+                      fill
+                      style={{ objectFit: "cover", objectPosition: "center" }}
+                      unoptimized={m.url?.startsWith("http")}
+                    />
+                  ) : (
+                    <video
+                      src={m.url}
+                      controls
+                      className="absolute"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  )}
+                </div>
+              )
+            })}
 
           {/* Text content */}
           {step.content && (
             <div
               style={{
                 position: "absolute",
-                bottom: 20,
-                left: 20,
-                right: 20,
+                bottom: "2%",
+                left: "2%",
+                right: "2%",
                 textAlign: "center",
                 color: "var(--foreground)",
-                fontSize: 18,
+                fontSize: "1.125rem",
                 textShadow: "0 2px 4px rgba(0,0,0,0.8)",
               }}
             >
               {step.content}
             </div>
           )}
-        </div>
 
-        {/* Viewport indicator */}
-        <div className="absolute top-2 left-2 rounded pointer-events-none z-50 text-xs px-2 py-1" style={{ background: "var(--hover-bg)", color: "var(--foreground)" }}>
-          {viewport.width}×{viewport.height}
+          <div className="absolute top-2 left-2 rounded pointer-events-none z-50 text-xs px-2 py-1 bg-[var(--hover-bg)] text-[var(--foreground)]">
+            {viewport.width}×{viewport.height}
+          </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

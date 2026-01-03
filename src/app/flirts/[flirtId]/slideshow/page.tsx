@@ -32,7 +32,7 @@ export default async function Page({
   );
 
   return (
-    <div className="w-full h-screen flex justify-center items-center bg-gray-900">
+    <div className="w-full h-screen flex justify-center items-center bg-[var(--background)]">
       <Slideshow steps={steps} maxHeight="100vh" />
     </div>
   );

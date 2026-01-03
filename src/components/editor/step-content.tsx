@@ -64,7 +64,7 @@ export default function StepContent({
     updateScale();
     window.addEventListener("resize", updateScale);
     const timer = setTimeout(updateScale, 100);
-    
+
     return () => {
       window.removeEventListener("resize", updateScale);
       clearTimeout(timer);
@@ -506,11 +506,12 @@ export default function StepContent({
         </div>
       </div>
 
-      {selectedItem && (
-        <p className="text-xs text-muted-foreground mt-2">
-          Use arrow keys to move the selected image
-        </p>
-      )}
+      <p
+        className="text-xs text-muted-foreground mt-2"
+        style={{ visibility: selectedItem ? "visible" : "hidden" }}
+      >
+        Use arrow keys to move the selected image
+      </p>
 
       {contextMenu && (
         <div style={{ position: "fixed", top: contextMenu.y, left: contextMenu.x }} className="z-[9999] min-w-[160px] rounded-md overflow-hidden">
