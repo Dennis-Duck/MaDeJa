@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Step } from "@/types/step";
