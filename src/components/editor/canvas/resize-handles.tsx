@@ -1,17 +1,19 @@
-"use client";
+"use client"
+
+import type { ResizeHandle } from "@/app/hooks/use-canvas-interaction"
 
 interface ResizeHandlesProps {
-  resizeMode: 'scale' | 'resize';
-  onResizeStart: (e: React.MouseEvent, handle: string) => void;
+  resizeMode: "scale" | "resize"
+  onResizeStart: (e: React.MouseEvent, handle: ResizeHandle) => void
 }
 
 export function ResizeHandles({ resizeMode, onResizeStart }: ResizeHandlesProps) {
-  const handleClass = "absolute w-4 h-4 bg-blue-500 rounded-full";
-  const handleStyle = { pointerEvents: "auto" as const };
+  const handleClass = "absolute w-4 h-4 bg-blue-500 rounded-full"
+  const handleStyle = { pointerEvents: "auto" as const }
 
   return (
     <>
-      {resizeMode === 'resize' && (
+      {resizeMode === "resize" && (
         <>
           <div
             onMouseDown={(e) => onResizeStart(e, "nw")}
@@ -56,5 +58,5 @@ export function ResizeHandles({ resizeMode, onResizeStart }: ResizeHandlesProps)
         style={handleStyle}
       />
     </>
-  );
+  )
 }

@@ -12,7 +12,7 @@ export default function StepSidebar({ stepId, onStepChange }: StepSidebarProps) 
   return (
     <div className="space-y-4">
       <div className="p-2 border rounded shadow-sm">
-        <h3 className="mb-3 font-semibold">Add to step</h3>
+        <h3 className="mb-3 font-semibold">Add media</h3>
         <UploadPic stepId={stepId} onUploadComplete={onStepChange} />
       </div>
 

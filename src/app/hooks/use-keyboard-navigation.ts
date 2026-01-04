@@ -1,50 +1,57 @@
-import { useEffect } from "react";
+"use client"
 
-interface UseKeyboardNavigationProps {
-  selectedItem: string | null;
-  items: Array<{ id: string; x?: number; y?: number }>;
-  onPositionUpdate: (id: string, x: number, y: number) => Promise<void>;
+import { useEffect } from "react"
+
+interface CanvasItemIdentifier {
+  id: string
+  type: "media" | "element"
 }
 
-export function useKeyboardNavigation({
-  selectedItem,
-  items,
-  onPositionUpdate,
-}: UseKeyboardNavigationProps) {
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (!selectedItem) return;
-      const current = items.find((m) => m.id === selectedItem);
-      if (!current) return;
+interface Item {
+  id: string
+  x?: number
+  y?: number
+}
 
-      let newX = current.x ?? 0;
-      let newY = current.y ?? 0;
+interface UseKeyboardNavigationProps {
+  selectedItem: CanvasItemIdentifier | null
+  items: Item[]
+  onPositionUpdate: (item: CanvasItemIdentifier, x: number, y: number) => Promise<void>
+}
+
+export function useKeyboardNavigation({ selectedItem, items, onPositionUpdate }: UseKeyboardNavigationProps) {
+  useEffect(() => {
+    if (!selectedItem) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const item = items.find((i) => i.id === selectedItem.id)
+      if (!item) return
+
+      const currentX = item.x ?? 0
+      const currentY = item.y ?? 0
+      const step = e.shiftKey ? 10 : 1
 
       switch (e.key) {
         case "ArrowUp":
-          e.preventDefault();
-          newY -= 10;
-          break;
+          e.preventDefault()
+          onPositionUpdate(selectedItem, currentX, Math.max(0, currentY - step))
+          break
         case "ArrowDown":
-          e.preventDefault();
-          newY += 10;
-          break;
+          e.preventDefault()
+          onPositionUpdate(selectedItem, currentX, currentY + step)
+          break
         case "ArrowLeft":
-          e.preventDefault();
-          newX -= 10;
-          break;
+          e.preventDefault()
+          onPositionUpdate(selectedItem, Math.max(0, currentX - step), currentY)
+          break
         case "ArrowRight":
-          e.preventDefault();
-          newX += 10;
-          break;
-        default:
-          return;
+          e.preventDefault()
+          onPositionUpdate(selectedItem, currentX + step, currentY)
+          break
       }
-
-      onPositionUpdate(selectedItem, newX, newY);
     }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedItem, items, onPositionUpdate]);
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [selectedItem, items, onPositionUpdate])
 }

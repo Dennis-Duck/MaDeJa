@@ -1,23 +1,31 @@
-"use client";
+"use client"
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import type { Step } from "@/types/step";
-import { Canvas } from "./canvas/canvas";
-import { MediaItem } from "./canvas/elements/media";
-import { ContextMenu } from "./canvas/context-menu";
-import { useCanvasScale } from "@/app/hooks/use-canvas-scale";
-import { useCanvasInteraction } from "@/app/hooks/use-canvas-interaction";
-import { useKeyboardNavigation } from "@/app/hooks/use-keyboard-navigation";
-import { ButtonItem } from "./canvas/elements/button";
+import type React from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
+import type { Step } from "@/types/step"
+import { Canvas } from "./canvas/canvas"
+import { MediaItem } from "./canvas/elements/media"
+import { ContextMenu } from "./canvas/context-menu"
+import { useCanvasScale } from "@/app/hooks/use-canvas-scale"
+import { useCanvasInteraction } from "@/app/hooks/use-canvas-interaction"
+import { useKeyboardNavigation } from "@/app/hooks/use-keyboard-navigation"
+import { ButtonItem } from "./canvas/elements/button"
 
-const CANVAS_WIDTH = 1920;
-const CANVAS_HEIGHT = 1080;
+const CANVAS_WIDTH = 1920
+const CANVAS_HEIGHT = 1080
+
+type CanvasItemType = "media" | "element"
+
+interface CanvasItemIdentifier {
+  id: string
+  type: CanvasItemType
+}
 
 interface StepContentProps {
-  step: Step;
-  totalSteps: number;
-  onStepContentChange?: () => void;
-  initialFlirtId?: string;
+  step: Step
+  totalSteps: number
+  onStepContentChange?: () => void
+  initialFlirtId?: string
 }
 
 export default function StepContent({
@@ -26,168 +34,206 @@ export default function StepContent({
   onStepContentChange,
   initialFlirtId,
 }: StepContentProps) {
-  const [step, setStep] = useState<Step>(initialStep);
-  const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [step, setStep] = useState<Step>(initialStep)
+  const [selectedItem, setSelectedItem] = useState<CanvasItemIdentifier | null>(null)
   const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    mediaId: string;
-  } | null>(null);
-  const [resizeMode, setResizeMode] = useState<{ [key: string]: 'scale' | 'resize' | null }>({});
-  const containerRef = useRef<HTMLDivElement>(null);
+    x: number
+    y: number
+    item: CanvasItemIdentifier
+  } | null>(null)
+  const [resizeMode, setResizeMode] = useState<{ [key: string]: "scale" | "resize" | null }>({})
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const scale = useCanvasScale({
     containerRef,
     canvasWidth: CANVAS_WIDTH,
     canvasHeight: CANVAS_HEIGHT,
-  });
+  })
 
-  // Refetch step on mount to ensure latest positions
   useEffect(() => {
     async function fetchStep() {
       const res = await fetch(`/api/step/${initialStep.id}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
-      });
+      })
       if (res.ok) {
-        const data = await res.json();
-        setStep(data.step);
+        const data = await res.json()
+        setStep(data.step)
       }
     }
-    fetchStep();
-  }, [initialFlirtId, initialStep.id]);
+    fetchStep()
+  }, [initialFlirtId, initialStep.id])
 
-  // Keep local `step` state in sync when parent passes a new `initialStep` object
   useEffect(() => {
-    setStep(initialStep);
-  }, [initialStep]);
+    setStep(initialStep)
+  }, [initialStep])
 
-  // API calls
-  const updatePosition = useCallback(async (mediaId: string, x: number, y: number) => {
-    const res = await fetch(`/api/step/${step.id}/media/${mediaId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ x, y }),
-    });
-    if (res.ok) {
-      setStep((prev) => ({
-        ...prev,
-        media: prev.media.map((m) =>
-          m.id === mediaId ? { ...m, x, y } : m
-        ),
-      }));
-      onStepContentChange?.();
-    }
-  }, [step.id, onStepContentChange]);
+  const updatePosition = useCallback(
+    async (item: CanvasItemIdentifier, x: number, y: number) => {
+      const endpoint =
+        item.type === "media" ? `/api/step/${step.id}/media/${item.id}` : `/api/step/${step.id}/elements/${item.id}`
 
-  const updateSize = useCallback(async (mediaId: string, width: number, height: number) => {
-    const res = await fetch(`/api/step/${step.id}/media/${mediaId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ width, height }),
-    });
-    if (res.ok) {
-      setStep((prev) => ({
-        ...prev,
-        media: prev.media.map((m) =>
-          m.id === mediaId ? { ...m, width, height } : m
-        ),
-      }));
-      onStepContentChange?.();
-    }
-  }, [step.id, onStepContentChange]);
+      const res = await fetch(endpoint, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ x, y }),
+      })
 
-  const updateLayer = useCallback(async (
-    mediaId: string,
-    action: "front" | "forward" | "backward" | "back"
-  ) => {
-    const current = step.media.find((m) => m.id === mediaId);
-    if (!current) return;
+      if (res.ok) {
+        if (item.type === "media") {
+          setStep((prev) => ({
+            ...prev,
+            media: prev.media.map((m) => (m.id === item.id ? { ...m, x, y } : m)),
+          }))
+        } else {
+          setStep((prev) => ({
+            ...prev,
+            elements: prev.elements.map((el) => (el.id === item.id ? { ...el, x, y } : el)),
+          }))
+        }
+        onStepContentChange?.()
+      }
+    },
+    [step.id, onStepContentChange],
+  )
 
-    const zValues = step.media.map((m) => m.z ?? 0);
-    const maxZ = Math.max(...zValues, 0);
-    const minZ = Math.min(...zValues, 0);
+  const updateSize = useCallback(
+    async (item: CanvasItemIdentifier, width: number, height: number) => {
+      const endpoint =
+        item.type === "media" ? `/api/step/${step.id}/media/${item.id}` : `/api/step/${step.id}/element/${item.id}`
 
-    let newZ = current.z ?? 0;
-    switch (action) {
-      case "front":
-        newZ = maxZ + 1;
-        break;
-      case "forward":
-        newZ = (current.z ?? 0) + 1;
-        break;
-      case "backward":
-        newZ = Math.max(0, (current.z ?? 0) - 1);
-        break;
-      case "back":
-        newZ = Math.max(0, minZ - 1);
-        break;
-    }
+      const res = await fetch(endpoint, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ width, height }),
+      })
 
-    const res = await fetch(`/api/step/${step.id}/media/${mediaId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ z: newZ }),
-    });
-    if (res.ok) {
-      setStep((prev) => ({
-        ...prev,
-        media: prev.media.map((m) =>
-          m.id === mediaId ? { ...m, z: newZ } : m
-        ),
-      }));
-      onStepContentChange?.();
-    }
-  }, [step, onStepContentChange]);
+      if (res.ok) {
+        if (item.type === "media") {
+          setStep((prev) => ({
+            ...prev,
+            media: prev.media.map((m) => (m.id === item.id ? { ...m, width, height } : m)),
+          }))
+        } else {
+          setStep((prev) => ({
+            ...prev,
+            elements: prev.elements.map((el) => (el.id === item.id ? { ...el, width, height } : el)),
+          }))
+        }
+        onStepContentChange?.()
+      }
+    },
+    [step.id, onStepContentChange],
+  )
 
-  const handleDelete = useCallback(async (mediaId: string) => {
-    const res = await fetch(`/api/step/${step.id}/media/${mediaId}`, { method: "DELETE" });
-    const data = await res.json();
-    if (data.ok) {
-      setStep((prev) => ({
-        ...prev,
-        media: prev.media.filter((m) => m.id !== mediaId),
-      }));
-      onStepContentChange?.();
-      if (selectedItem === mediaId) setSelectedItem(null);
-    } else {
-      console.error(data.error);
-    }
-  }, [step.id, selectedItem, onStepContentChange]);
+  const updateLayer = useCallback(
+    async (item: CanvasItemIdentifier, action: "front" | "forward" | "backward" | "back") => {
+      const allItems = item.type === "media" ? step.media : step.elements
+      const current = allItems.find((i) => i.id === item.id)
+      if (!current) return
 
-  // Canvas interaction hook
-  const {
-    draggedItem,
-    startDrag,
-    startResize,
-    handleMove,
-    endInteraction,
-  } = useCanvasInteraction({
+      const zValues = allItems.map((i) => i.z ?? 0)
+      const maxZ = Math.max(...zValues, 0)
+      const minZ = Math.min(...zValues, 0)
+
+      let newZ = current.z ?? 0
+      switch (action) {
+        case "front":
+          newZ = maxZ + 1
+          break
+        case "forward":
+          newZ = (current.z ?? 0) + 1
+          break
+        case "backward":
+          newZ = Math.max(0, (current.z ?? 0) - 1)
+          break
+        case "back":
+          newZ = Math.max(0, minZ - 1)
+          break
+      }
+
+      const endpoint =
+        item.type === "media" ? `/api/step/${step.id}/media/${item.id}` : `/api/step/${step.id}/element/${item.id}`
+
+      const res = await fetch(endpoint, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ z: newZ }),
+      })
+
+      if (res.ok) {
+        if (item.type === "media") {
+          setStep((prev) => ({
+            ...prev,
+            media: prev.media.map((m) => (m.id === item.id ? { ...m, z: newZ } : m)),
+          }))
+        } else {
+          setStep((prev) => ({
+            ...prev,
+            elements: prev.elements.map((el) => (el.id === item.id ? { ...el, z: newZ } : el)),
+          }))
+        }
+        onStepContentChange?.()
+      }
+    },
+    [step, onStepContentChange],
+  )
+
+  const handleDelete = useCallback(
+    async (item: CanvasItemIdentifier) => {
+      const endpoint =
+        item.type === "media" ? `/api/step/${step.id}/media/${item.id}` : `/api/step/${step.id}/element/${item.id}`
+
+      const res = await fetch(endpoint, { method: "DELETE" })
+      const data = await res.json()
+
+      if (data.ok) {
+        if (item.type === "media") {
+          setStep((prev) => ({
+            ...prev,
+            media: prev.media.filter((m) => m.id !== item.id),
+          }))
+        } else {
+          setStep((prev) => ({
+            ...prev,
+            elements: prev.elements.filter((el) => el.id !== item.id),
+          }))
+        }
+        onStepContentChange?.()
+        if (selectedItem?.id === item.id && selectedItem?.type === item.type) {
+          setSelectedItem(null)
+        }
+      } else {
+        console.error(data.error)
+      }
+    },
+    [step.id, selectedItem, onStepContentChange],
+  )
+
+  const { draggedItem, startDrag, startResize, handleMove, endInteraction } = useCanvasInteraction({
     scale,
     onPositionUpdate: updatePosition,
     onSizeUpdate: updateSize,
-  });
+  })
 
-  // Keyboard navigation
   useKeyboardNavigation({
     selectedItem,
-    items: step.media,
+    items: [...step.media, ...step.elements],
     onPositionUpdate: updatePosition,
-  });
+  })
 
-  // Context menu handlers
-  const handleContextMenu = useCallback((e: React.MouseEvent, mediaId: string) => {
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, mediaId });
-    setSelectedItem(mediaId);
-  }, []);
+  const handleContextMenu = useCallback((e: React.MouseEvent, item: CanvasItemIdentifier) => {
+    e.preventDefault()
+    setContextMenu({ x: e.clientX, y: e.clientY, item })
+    setSelectedItem(item)
+  }, [])
 
-  const toggleResizeMode = useCallback((mediaId: string, mode: 'scale' | 'resize') => {
+  const toggleResizeMode = useCallback((itemId: string, mode: "scale" | "resize") => {
     setResizeMode((prev) => ({
       ...prev,
-      [mediaId]: prev[mediaId] === mode ? null : mode,
-    }));
-  }, []);
+      [itemId]: prev[itemId] === mode ? null : mode,
+    }))
+  }, [])
 
   return (
     <div>
@@ -200,187 +246,112 @@ export default function StepContent({
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
         scale={scale}
-        onMouseMove={(e) => handleMove(e, contextMenu ? resizeMode[contextMenu.mediaId] : null)}
+        onMouseMove={(e) => handleMove(e, contextMenu ? resizeMode[contextMenu.item.id] : null)}
         onMouseUp={endInteraction}
         onClick={() => setContextMenu(null)}
       >
         {step.media
           .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
-          .map((m) => (
-            <MediaItem
-              key={m.id}
-              id={m.id}
-              type={m.type}
-              url={m.url}
-              x={m.x ?? 0}
-              y={m.y ?? 0}
-              width={m.width ?? 300}
-              height={m.height ?? 300}
-              z={m.z ?? 0}
-              isSelected={selectedItem === m.id}
-              isDragging={draggedItem === m.id}
-              resizeMode={resizeMode[m.id]}
-              onMouseDown={(e) => {
-                const current = step.media.find((media) => media.id === m.id);
-                if (current) {
-                  startDrag(e, m.id, current.x ?? 0, current.y ?? 0);
-                  setSelectedItem(m.id);
-                }
-              }}
-              onClick={() => setSelectedItem(m.id)}
-              onContextMenu={(e) => handleContextMenu(e, m.id)}
-              onDelete={() => handleDelete(m.id)}
-              onResizeStart={(e, handle) => {
-                const current = step.media.find((media) => media.id === m.id);
-                if (current) {
-                  startResize(
-                    e,
-                    m.id,
-                    handle,
-                    current.width ?? 300,
-                    current.height ?? 300,
-                    current.x ?? 0,
-                    current.y ?? 0
-                  );
-                }
-              }}
-            />
-          ))}
-          {step.elements
-  .sort((a, b) => a.z - b.z)
-  .map((el) => {
-    switch (el.type) {
-      case "BUTTON":
-        return (
-          <ButtonItem
-            key={el.id}
-            id={el.id}
-            x={el.x}
-            y={el.y}
-            width={el.width ?? 200}
-            height={el.height ?? 60}
-            z={el.z ?? 0}
-            label={el.text ?? "Button"}
-            isSelected={selectedItem === el.id}
-            isDragging={draggedItem === el.id}
-            resizeMode={resizeMode[el.id]}
-            onMouseDown={(e) => {
-              startDrag(e, el.id, el.x, el.y);
-              setSelectedItem(el.id);
-            }}
-            onClick={() => setSelectedItem(el.id)}
-            onContextMenu={(e) => handleContextMenu(e, el.id)}
-            onDelete={() => handleDelete(el.id)}
-            onResizeStart={(e, handle) =>
-              startResize(
-                e,
-                el.id,
-                handle,
-                el.width ?? 200,
-                el.height ?? 60,
-                el.x,
-                el.y
-              )
+          .map((m) => {
+            const itemIdentifier: CanvasItemIdentifier = { id: m.id, type: "media" }
+            return (
+              <MediaItem
+                key={m.id}
+                id={m.id}
+                type={m.type}
+                url={m.url}
+                x={m.x ?? 0}
+                y={m.y ?? 0}
+                width={m.width ?? 300}
+                height={m.height ?? 300}
+                z={m.z ?? 0}
+                isSelected={selectedItem?.id === m.id && selectedItem?.type === "media"}
+                isDragging={draggedItem === m.id}
+                resizeMode={resizeMode[m.id]}
+                onMouseDown={(e) => {
+                  const current = step.media.find((media) => media.id === m.id)
+                  if (current) {
+                    startDrag(e, m.id, "media", current.x ?? 0, current.y ?? 0)
+                    setSelectedItem(itemIdentifier)
+                  }
+                }}
+                onClick={() => setSelectedItem(itemIdentifier)}
+                onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
+                onDelete={() => handleDelete(itemIdentifier)}
+                onResizeStart={(e, handle) => {
+                  const current = step.media.find((media) => media.id === m.id)
+                  if (current) {
+                    startResize(
+                      e,
+                      m.id,
+                      "media",
+                      handle,
+                      current.width ?? 300,
+                      current.height ?? 300,
+                      current.x ?? 0,
+                      current.y ?? 0,
+                    )
+                  }
+                }}
+              />
+            )
+          })}
+
+        {step.elements
+          .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
+          .map((el) => {
+            const itemIdentifier: CanvasItemIdentifier = { id: el.id, type: "element" }
+
+            switch (el.type) {
+              case "BUTTON":
+                return (
+                  <ButtonItem
+                    key={el.id}
+                    id={el.id}
+                    x={el.x}
+                    y={el.y}
+                    width={el.width ?? 200}
+                    height={el.height ?? 60}
+                    z={el.z ?? 0}
+                    label={el.text ?? "Button"}
+                    isSelected={selectedItem?.id === el.id && selectedItem?.type === "element"}
+                    isDragging={draggedItem === el.id}
+                    resizeMode={resizeMode[el.id]}
+                    onMouseDown={(e) => {
+                      startDrag(e, el.id, "element", el.x, el.y)
+                      setSelectedItem(itemIdentifier)
+                    }}
+                    onClick={() => setSelectedItem(itemIdentifier)}
+                    onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
+                    onDelete={() => handleDelete(itemIdentifier)}
+                    onResizeStart={(e, handle) =>
+                      startResize(e, el.id, "element", handle, el.width ?? 200, el.height ?? 60, el.x, el.y)
+                    }
+                  />
+                )
+
+              default:
+                return null
             }
-          />
-        );
-
-      // case "TEXT":
-      //   return (
-      //     <TextItem
-      //       key={el.id}
-      //       id={el.id}
-      //       x={el.x}
-      //       y={el.y}
-      //       width={el.width ?? 300}
-      //       height={el.height ?? 100}
-      //       z={el.z ?? 0}
-      //       text={el.text ?? ""}
-      //       isSelected={selectedItem === el.id}
-      //       isDragging={draggedItem === el.id}
-      //       resizeMode={resizeMode[el.id]}
-      //       onMouseDown={(e) => {
-      //         startDrag(e, el.id, el.x, el.y);
-      //         setSelectedItem(el.id);
-      //       }}
-      //       onClick={() => setSelectedItem(el.id)}
-      //       onContextMenu={(e) => handleContextMenu(e, el.id)}
-      //       onDelete={() => handleDelete(el.id)}
-      //       onResizeStart={(e, handle) =>
-      //         startResize(
-      //           e,
-      //           el.id,
-      //           handle,
-      //           el.width ?? 300,
-      //           el.height ?? 100,
-      //           el.x,
-      //           el.y
-      //         )
-      //       }
-      //     />
-      //   );
-
-      // case "TIMER":
-      //   return (
-      //     <TimerItem
-      //       key={el.id}
-      //       id={el.id}
-      //       x={el.x}
-      //       y={el.y}
-      //       width={el.width ?? 200}
-      //       height={el.height ?? 50}
-      //       z={el.z ?? 0}
-      //       time={el.text ?? "00:00"} 
-      //       isSelected={selectedItem === el.id}
-      //       isDragging={draggedItem === el.id}
-      //       resizeMode={resizeMode[el.id]}
-      //       onMouseDown={(e) => {
-      //         startDrag(e, el.id, el.x, el.y);
-      //         setSelectedItem(el.id);
-      //       }}
-      //       onClick={() => setSelectedItem(el.id)}
-      //       onContextMenu={(e) => handleContextMenu(e, el.id)}
-      //       onDelete={() => handleDelete(el.id)}
-      //       onResizeStart={(e, handle) =>
-      //         startResize(
-      //           e,
-      //           el.id,
-      //           handle,
-      //           el.width ?? 200,
-      //           el.height ?? 50,
-      //           el.x,
-      //           el.y
-      //         )
-      //       }
-      //     />
-      //   );
-
-      default:
-        return null; // future-proof voor nieuwe types
-    }
-  })}
-
+          })}
       </Canvas>
 
-      <p
-        className="text-xs text-muted-foreground mt-2"
-        style={{ visibility: selectedItem ? "visible" : "hidden" }}
-      >
-        Use arrow keys to move the selected image
+      <p className="text-xs text-muted-foreground mt-2" style={{ visibility: selectedItem ? "visible" : "hidden" }}>
+        Use arrow keys to move the selected item
       </p>
 
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          resizeMode={resizeMode[contextMenu.mediaId]}
-          onDelete={() => handleDelete(contextMenu.mediaId)}
-          onToggleScale={() => toggleResizeMode(contextMenu.mediaId, 'scale')}
-          onToggleResize={() => toggleResizeMode(contextMenu.mediaId, 'resize')}
-          onLayer={(action) => updateLayer(contextMenu.mediaId, action)}
+          resizeMode={resizeMode[contextMenu.item.id]}
+          onDelete={() => handleDelete(contextMenu.item)}
+          onToggleScale={() => toggleResizeMode(contextMenu.item.id, "scale")}
+          onToggleResize={() => toggleResizeMode(contextMenu.item.id, "resize")}
+          onLayer={(action) => updateLayer(contextMenu.item, action)}
           onClose={() => setContextMenu(null)}
         />
       )}
     </div>
-  );
+  )
 }

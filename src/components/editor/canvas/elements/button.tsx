@@ -1,26 +1,24 @@
-"use client";
+"use client"
 
-import { ResizeHandles } from "../resize-handles";
+import type { ResizeHandle } from "@/app/hooks/use-canvas-interaction"
+import { ResizeHandles } from "../resize-handles"
 
 interface ButtonItemProps {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  z: number;
-
-  label: string;
-
-  isSelected: boolean;
-  isDragging: boolean;
-  resizeMode: "scale" | "resize" | null;
-
-  onMouseDown: (e: React.MouseEvent) => void;
-  onClick: () => void;
-  onContextMenu: (e: React.MouseEvent) => void;
-  onDelete: () => void;
-  onResizeStart: (e: React.MouseEvent, handle: string) => void;
+  id: string
+  x: number
+  y: number
+  width: number
+  height: number
+  z: number
+  label: string
+  isSelected: boolean
+  isDragging: boolean
+  resizeMode: "scale" | "resize" | null
+  onMouseDown: (e: React.MouseEvent) => void
+  onClick: () => void
+  onContextMenu: (e: React.MouseEvent) => void
+  onDelete: () => void
+  onResizeStart: (e: React.MouseEvent, handle: ResizeHandle) => void
 }
 
 export function ButtonItem({
@@ -42,8 +40,8 @@ export function ButtonItem({
 }: ButtonItemProps) {
   return (
     <div
-      id={`button-${id}`}
-      className="absolute rounded-lg shadow-lg"
+      id={`element-${id}`}
+      className="absolute"
       style={{
         left: x,
         top: y,
@@ -58,38 +56,25 @@ export function ButtonItem({
       onClick={onClick}
       onContextMenu={onContextMenu}
     >
-      {/* BUTTON VISUAL */}
-      <div className="w-full h-full flex items-center justify-center pointer-events-none select-none">
-        <button
-          className="w-full h-full rounded-lg bg-blue-600 text-white font-semibold"
-          style={{
-            fontSize: Math.max(12, height * 0.35),
-          }}
-        >
-          {label}
-        </button>
-      </div>
+      <button
+        className="w-full h-full bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg pointer-events-none"
+        style={{ fontSize: `${Math.min(width / 10, height / 3)}px` }}
+      >
+        {label}
+      </button>
 
-      {/* DELETE */}
       <button
         onClick={onDelete}
-        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white font-bold"
+        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white font-bold pointer-events-auto"
       >
         ×
       </button>
 
-      {/* RESIZE */}
-      {isSelected && resizeMode && (
-        <ResizeHandles
-          resizeMode={resizeMode}
-          onResizeStart={onResizeStart}
-        />
-      )}
+      {isSelected && resizeMode && <ResizeHandles resizeMode={resizeMode} onResizeStart={onResizeStart} />}
 
-      {/* Z-INDEX BADGE */}
-      <div className="absolute left-1 top-1 bg-black/60 text-white text-xs px-1 rounded">
+      <div className="absolute left-1 top-1 bg-black/60 text-white text-xs px-1 rounded pointer-events-none">
         Z: {z}
       </div>
     </div>
-  );
+  )
 }

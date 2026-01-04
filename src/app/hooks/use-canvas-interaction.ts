@@ -1,194 +1,211 @@
-import { useState, useRef, useCallback } from "react";
+"use client"
 
-interface DragState {
-  x: number;
-  y: number;
-  itemX: number;
-  itemY: number;
-}
+import type React from "react"
+import { useState, useCallback, useRef } from "react"
 
-interface ResizeState {
-  x: number;
-  y: number;
-  initialWidth: number;
-  initialHeight: number;
-  initialX: number;
-  initialY: number;
+export type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w"
+
+interface CanvasItemIdentifier {
+  id: string
+  type: "media" | "element"
 }
 
 interface UseCanvasInteractionProps {
-  scale: number;
-  onPositionUpdate: (id: string, x: number, y: number) => Promise<void>;
-  onSizeUpdate: (id: string, width: number, height: number) => Promise<void>;
+  scale: number
+  onPositionUpdate: (item: CanvasItemIdentifier, x: number, y: number) => Promise<void>
+  onSizeUpdate: (item: CanvasItemIdentifier, width: number, height: number) => Promise<void>
 }
 
-export function useCanvasInteraction({
-  scale,
-  onPositionUpdate,
-  onSizeUpdate,
-}: UseCanvasInteractionProps) {
-  const [draggedItem, setDraggedItem] = useState<string | null>(null);
-  const [resizingItem, setResizingItem] = useState<string | null>(null);
-  const [resizeHandle, setResizeHandle] = useState<string | null>(null);
-  
-  const dragStartPos = useRef<DragState | null>(null);
-  const resizeStartPos = useRef<ResizeState | null>(null);
+export function useCanvasInteraction({ scale, onPositionUpdate, onSizeUpdate }: UseCanvasInteractionProps) {
+  const [draggedItem, setDraggedItem] = useState<string | null>(null)
+  const draggedItemType = useRef<"media" | "element" | null>(null)
+  const dragStart = useRef<{ x: number; y: number; itemX: number; itemY: number } | null>(null)
 
-  const startDrag = useCallback((
-    e: React.MouseEvent,
-    itemId: string,
-    currentX: number,
-    currentY: number
-  ) => {
-    setDraggedItem(itemId);
-    dragStartPos.current = {
-      x: e.clientX,
-      y: e.clientY,
-      itemX: currentX,
-      itemY: currentY,
-    };
-  }, []);
+  const [resizeState, setResizeState] = useState<{
+    itemId: string
+    itemType: "media" | "element"
+    handle: ResizeHandle
+    startX: number
+    startY: number
+    startWidth: number
+    startHeight: number
+    startPosX: number
+    startPosY: number
+  } | null>(null)
 
-  const startResize = useCallback((
-    e: React.MouseEvent,
-    itemId: string,
-    handle: string,
-    currentWidth: number,
-    currentHeight: number,
-    currentX: number,
-    currentY: number
-  ) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setResizingItem(itemId);
-    setResizeHandle(handle);
-    resizeStartPos.current = {
-      x: e.clientX,
-      y: e.clientY,
-      initialWidth: currentWidth,
-      initialHeight: currentHeight,
-      initialX: currentX,
-      initialY: currentY,
-    };
-  }, []);
+  const startDrag = useCallback(
+    (e: React.MouseEvent, itemId: string, itemType: "media" | "element", itemX: number, itemY: number) => {
+      e.stopPropagation()
+      setDraggedItem(itemId)
+      draggedItemType.current = itemType
+      dragStart.current = { x: e.clientX, y: e.clientY, itemX, itemY }
+    },
+    [],
+  )
 
-  const handleMove = useCallback((
-    e: React.MouseEvent,
-    resizeMode: 'scale' | 'resize' | null
-  ) => {
-    if (resizingItem && resizeHandle && resizeStartPos.current) {
-      const deltaX = (e.clientX - resizeStartPos.current.x) / scale;
-      const deltaY = (e.clientY - resizeStartPos.current.y) / scale;
-      let newWidth = resizeStartPos.current.initialWidth;
-      let newHeight = resizeStartPos.current.initialHeight;
-      let newX = resizeStartPos.current.initialX;
-      let newY = resizeStartPos.current.initialY;
+  const startResize = useCallback(
+    (
+      e: React.MouseEvent,
+      itemId: string,
+      itemType: "media" | "element",
+      handle: ResizeHandle,
+      width: number,
+      height: number,
+      x: number,
+      y: number,
+    ) => {
+      e.stopPropagation()
+      setResizeState({
+        itemId,
+        itemType,
+        handle,
+        startX: e.clientX,
+        startY: e.clientY,
+        startWidth: width,
+        startHeight: height,
+        startPosX: x,
+        startPosY: y,
+      })
+    },
+    [],
+  )
 
-      if (resizeMode === 'scale') {
-        const aspectRatio = resizeStartPos.current.initialWidth / resizeStartPos.current.initialHeight;
-        const delta = Math.max(deltaX, deltaY);
-        newWidth = Math.max(50, resizeStartPos.current.initialWidth + delta);
-        newHeight = Math.max(50, newWidth / aspectRatio);
-        
-        if (resizeHandle === "nw" || resizeHandle === "ne") {
-          newY = resizeStartPos.current.initialY + (resizeStartPos.current.initialHeight - newHeight);
+  const handleMove = useCallback(
+    (e: React.MouseEvent, resizeMode: "scale" | "resize" | null) => {
+      if (resizeState) {
+        const deltaX = (e.clientX - resizeState.startX) / scale
+        const deltaY = (e.clientY - resizeState.startY) / scale
+        let newWidth = resizeState.startWidth
+        let newHeight = resizeState.startHeight
+        let newX = resizeState.startPosX
+        let newY = resizeState.startPosY
+        const aspectRatio = resizeState.startWidth / resizeState.startHeight
+
+        if (resizeMode === "scale") {
+          if (resizeState.handle === "se") {
+            newWidth = resizeState.startWidth + deltaX
+            newHeight = newWidth / aspectRatio
+          } else if (resizeState.handle === "sw") {
+            newWidth = resizeState.startWidth - deltaX
+            newHeight = newWidth / aspectRatio
+            newX = resizeState.startPosX + deltaX
+          } else if (resizeState.handle === "ne") {
+            newWidth = resizeState.startWidth + deltaX
+            newHeight = newWidth / aspectRatio
+            newY = resizeState.startPosY - (newHeight - resizeState.startHeight)
+          } else if (resizeState.handle === "nw") {
+            newWidth = resizeState.startWidth - deltaX
+            newHeight = newWidth / aspectRatio
+            newX = resizeState.startPosX + deltaX
+            newY = resizeState.startPosY - (newHeight - resizeState.startHeight)
+          }
+        } else if (resizeMode === "resize") {
+          switch (resizeState.handle) {
+            case "nw":
+              newWidth = resizeState.startWidth - deltaX
+              newHeight = resizeState.startHeight - deltaY
+              newX = resizeState.startPosX + deltaX
+              newY = resizeState.startPosY + deltaY
+              break
+            case "n":
+              newHeight = resizeState.startHeight - deltaY
+              newY = resizeState.startPosY + deltaY
+              break
+            case "ne":
+              newWidth = resizeState.startWidth + deltaX
+              newHeight = resizeState.startHeight - deltaY
+              newY = resizeState.startPosY + deltaY
+              break
+            case "e":
+              newWidth = resizeState.startWidth + deltaX
+              break
+            case "se":
+              newWidth = resizeState.startWidth + deltaX
+              newHeight = resizeState.startHeight + deltaY
+              break
+            case "s":
+              newHeight = resizeState.startHeight + deltaY
+              break
+            case "sw":
+              newWidth = resizeState.startWidth - deltaX
+              newHeight = resizeState.startHeight + deltaY
+              newX = resizeState.startPosX + deltaX
+              break
+            case "w":
+              newWidth = resizeState.startWidth - deltaX
+              newX = resizeState.startPosX + deltaX
+              break
+          }
+        } else {
+          if (resizeState.handle === "se") {
+            newWidth = resizeState.startWidth + deltaX
+            newHeight = newWidth / aspectRatio
+          } else if (resizeState.handle === "sw") {
+            newWidth = resizeState.startWidth - deltaX
+            newHeight = newWidth / aspectRatio
+            newX = resizeState.startPosX + deltaX
+          } else if (resizeState.handle === "ne") {
+            newWidth = resizeState.startWidth + deltaX
+            newHeight = newWidth / aspectRatio
+            newY = resizeState.startPosY - (newHeight - resizeState.startHeight)
+          } else if (resizeState.handle === "nw") {
+            newWidth = resizeState.startWidth - deltaX
+            newHeight = newWidth / aspectRatio
+            newX = resizeState.startPosX + deltaX
+            newY = resizeState.startPosY - (newHeight - resizeState.startHeight)
+          }
         }
-        if (resizeHandle === "nw" || resizeHandle === "sw") {
-          newX = resizeStartPos.current.initialX + (resizeStartPos.current.initialWidth - newWidth);
+
+        newWidth = Math.max(50, newWidth)
+        newHeight = Math.max(50, newHeight)
+
+        const el = document.getElementById(`${resizeState.itemType}-${resizeState.itemId}`)
+        if (el) {
+          el.style.width = `${newWidth}px`
+          el.style.height = `${newHeight}px`
+          el.style.left = `${newX}px`
+          el.style.top = `${newY}px`
         }
-      } else {
-        switch (resizeHandle) {
-          case "nw":
-            newWidth = Math.max(50, resizeStartPos.current.initialWidth - deltaX);
-            newHeight = Math.max(50, resizeStartPos.current.initialHeight - deltaY);
-            newX = resizeStartPos.current.initialX + deltaX;
-            newY = resizeStartPos.current.initialY + deltaY;
-            break;
-          case "n":
-            newHeight = Math.max(50, resizeStartPos.current.initialHeight - deltaY);
-            newY = resizeStartPos.current.initialY + deltaY;
-            break;
-          case "ne":
-            newWidth = Math.max(50, resizeStartPos.current.initialWidth + deltaX);
-            newHeight = Math.max(50, resizeStartPos.current.initialHeight - deltaY);
-            newY = resizeStartPos.current.initialY + deltaY;
-            break;
-          case "e":
-            newWidth = Math.max(50, resizeStartPos.current.initialWidth + deltaX);
-            break;
-          case "se":
-            newWidth = Math.max(50, resizeStartPos.current.initialWidth + deltaX);
-            newHeight = Math.max(50, resizeStartPos.current.initialHeight + deltaY);
-            break;
-          case "s":
-            newHeight = Math.max(50, resizeStartPos.current.initialHeight + deltaY);
-            break;
-          case "sw":
-            newWidth = Math.max(50, resizeStartPos.current.initialWidth - deltaX);
-            newHeight = Math.max(50, resizeStartPos.current.initialHeight + deltaY);
-            newX = resizeStartPos.current.initialX + deltaX;
-            break;
-          case "w":
-            newWidth = Math.max(50, resizeStartPos.current.initialWidth - deltaX);
-            newX = resizeStartPos.current.initialX + deltaX;
-            break;
+      } else if (draggedItem && dragStart.current && draggedItemType.current) {
+        const deltaX = (e.clientX - dragStart.current.x) / scale
+        const deltaY = (e.clientY - dragStart.current.y) / scale
+        const newX = Math.max(0, dragStart.current.itemX + deltaX)
+        const newY = Math.max(0, dragStart.current.itemY + deltaY)
+
+        const el = document.getElementById(`${draggedItemType.current}-${draggedItem}`)
+        if (el) {
+          el.style.left = `${newX}px`
+          el.style.top = `${newY}px`
         }
       }
-
-      const el = document.getElementById(`media-${resizingItem}`);
-      if (el) {
-        el.style.width = `${newWidth}px`;
-        el.style.height = `${newHeight}px`;
-        el.style.left = `${newX}px`;
-        el.style.top = `${newY}px`;
-      }
-    } else if (draggedItem && dragStartPos.current) {
-      const deltaX = (e.clientX - dragStartPos.current.x) / scale;
-      const deltaY = (e.clientY - dragStartPos.current.y) / scale;
-      const newX = dragStartPos.current.itemX + deltaX;
-      const newY = dragStartPos.current.itemY + deltaY;
-
-      const el = document.getElementById(`media-${draggedItem}`);
-      if (el) {
-        el.style.left = `${newX}px`;
-        el.style.top = `${newY}px`;
-      }
-    }
-  }, [resizingItem, resizeHandle, draggedItem, scale]);
+    },
+    [resizeState, draggedItem, scale],
+  )
 
   const endInteraction = useCallback(async () => {
-    if (resizingItem && resizeStartPos.current) {
-      const el = document.getElementById(`media-${resizingItem}`);
+    if (resizeState) {
+      const el = document.getElementById(`${resizeState.itemType}-${resizeState.itemId}`)
       if (el) {
-        const newWidth = parseInt(el.style.width) || resizeStartPos.current.initialWidth;
-        const newHeight = parseInt(el.style.height) || resizeStartPos.current.initialHeight;
-        const newX = parseInt(el.style.left) || resizeStartPos.current.initialX;
-        const newY = parseInt(el.style.top) || resizeStartPos.current.initialY;
-
-        await onSizeUpdate(resizingItem, newWidth, newHeight);
-        await onPositionUpdate(resizingItem, newX, newY);
+        const newWidth = Number.parseInt(el.style.width) || resizeState.startWidth
+        const newHeight = Number.parseInt(el.style.height) || resizeState.startHeight
+        const newX = Number.parseInt(el.style.left) || resizeState.startPosX
+        const newY = Number.parseInt(el.style.top) || resizeState.startPosY
+        await onSizeUpdate({ id: resizeState.itemId, type: resizeState.itemType }, newWidth, newHeight)
+        await onPositionUpdate({ id: resizeState.itemId, type: resizeState.itemType }, newX, newY)
       }
-      setResizingItem(null);
-      setResizeHandle(null);
-      resizeStartPos.current = null;
-    } else if (draggedItem && dragStartPos.current) {
-      const el = document.getElementById(`media-${draggedItem}`);
+      setResizeState(null)
+    } else if (draggedItem && dragStart.current && draggedItemType.current) {
+      const el = document.getElementById(`${draggedItemType.current}-${draggedItem}`)
       if (el) {
-        const newX = parseInt(el.style.left);
-        const newY = parseInt(el.style.top);
-        await onPositionUpdate(draggedItem, newX, newY);
+        const newX = Number.parseInt(el.style.left) || dragStart.current.itemX
+        const newY = Number.parseInt(el.style.top) || dragStart.current.itemY
+        await onPositionUpdate({ id: draggedItem, type: draggedItemType.current }, newX, newY)
       }
-      setDraggedItem(null);
-      dragStartPos.current = null;
+      setDraggedItem(null)
+      draggedItemType.current = null
+      dragStart.current = null
     }
-  }, [resizingItem, draggedItem, onPositionUpdate, onSizeUpdate]);
+  }, [resizeState, draggedItem, onPositionUpdate, onSizeUpdate])
 
-  return {
-    draggedItem,
-    resizingItem,
-    startDrag,
-    startResize,
-    handleMove,
-    endInteraction,
-  };
+  return { draggedItem, startDrag, startResize, handleMove, endInteraction }
 }
