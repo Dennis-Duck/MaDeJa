@@ -57,7 +57,7 @@ export function ButtonItem({
       onContextMenu={onContextMenu}
     >
       <button
-        className="w-full h-full bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg pointer-events-none"
+        className="w-full h-full bg-[var(--accent)] text-[var(--foreground)] font-semibold rounded-lg shadow-lg pointer-events-none"
         style={{ fontSize: `${Math.min(width / 10, height / 3)}px` }}
       >
         {label}

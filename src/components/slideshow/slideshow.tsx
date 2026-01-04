@@ -4,18 +4,24 @@ import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
 import type { Media } from "@/types/media"
+import type { Element } from "@/types/element"
 import Image from "next/image"
 
 const CANVAS_WIDTH = 1920
 const CANVAS_HEIGHT = 1080
 
-interface SlideshowProps {
-  steps: Media[][] // elke step bevat meerdere media
-  maxHeight?: string
-  topStrip?: number // hoogte van de bovenrand (px) die zichtbaar blijft
+interface SlideshowStep {
+  media: Media[]
+  elements: Element[]
 }
 
-export default function Slideshow({ steps, maxHeight, topStrip = 0}: SlideshowProps) {
+interface SlideshowProps {
+  steps: SlideshowStep[]
+  maxHeight?: string
+  topStrip?: number
+}
+
+export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowProps) {
   const [current, setCurrent] = useState(0)
   const [scale, setScale] = useState(1)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -122,14 +128,15 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0}: SlideshowPr
             background: "transparent",
           }}
         >
-          {steps.map((stepMedia, index) => (
+          {steps.map((step, index) => (
             <div
               key={index}
               className={`absolute top-0 left-0 w-full h-full transition-opacity duration-500 ${index === current ? "opacity-100" : "opacity-0"}`}
             >
-              {[...stepMedia]
-                .sort((a: Media, b: Media) => (a.z ?? 0) - (b.z ?? 0))
-                .map((m: Media) =>
+              {/* MEDIA */}
+              {step.media
+                .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
+                .map((m) =>
                   m.type === "IMAGE" ? (
                     <div
                       key={m.id}
@@ -146,8 +153,7 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0}: SlideshowPr
                         src={m.url || "/placeholder.svg"}
                         alt=""
                         fill
-                        style={{ objectFit: "cover", objectPosition: "center" }}
-                        unoptimized={m.url?.startsWith("http")}
+                        style={{ objectFit: "cover" }}
                       />
                     </div>
                   ) : (
@@ -167,8 +173,29 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0}: SlideshowPr
                     />
                   ),
                 )}
+
+              {/* ELEMENT BUTTONS */}
+              {step.elements
+                .filter((el) => el.type === "BUTTON")
+                .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
+                .map((el) => (
+                  <button
+                    key={el.id}
+                    className="absolute px-3 py-1 rounded bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] transition-colors duration-150"
+                    style={{
+                      left: `${((el.x ?? 0) / CANVAS_WIDTH) * 100}%`,
+                      top: `${((el.y ?? 0) / CANVAS_HEIGHT) * 100}%`,
+                      width: `${((el.width ?? 200) / CANVAS_WIDTH) * 100}%`,
+                      height: `${((el.height ?? 50) / CANVAS_HEIGHT) * 100}%`,
+                      zIndex: el.z ?? 0,
+                    }}
+                  >
+                    {el.text ?? "Button"}
+                  </button>
+                ))}
             </div>
           ))}
+
         </div>
       </div>
 

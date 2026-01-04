@@ -96,6 +96,7 @@ export default function StepPreview({ step }: StepPreviewProps) {
             overflow: "hidden",
           }}
         >
+          {/* MEDIA */}
           {step.media
             .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
             .map((m) => {
@@ -136,7 +137,46 @@ export default function StepPreview({ step }: StepPreviewProps) {
               )
             })}
 
-          {/* Text content */}
+          {/* ELEMENTS */}
+          {step.elements
+            .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
+            .map((el) => {
+              const leftPercent = ((el.x ?? 0) / CANVAS_WIDTH) * 100
+              const topPercent = ((el.y ?? 0) / CANVAS_HEIGHT) * 100
+              const widthPercent = ((el.width ?? 200) / CANVAS_WIDTH) * 100
+              const heightPercent = ((el.height ?? 60) / CANVAS_HEIGHT) * 100
+
+              switch (el.type) {
+                case "BUTTON":
+                  return (
+                    <button
+                      key={el.id}
+                      className="absolute px-3 py-1 rounded bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] transition-colors duration-150"
+                      style={{
+                        left: `${leftPercent}%`,
+                        top: `${topPercent}%`,
+                        width: `${widthPercent}%`,
+                        height: `${heightPercent}%`,
+                        zIndex: el.z ?? 0,
+                        fontSize: "clamp(0.75rem, 2vw, 1rem)",
+                      }}
+                    >
+                      {el.text ?? "Button"}
+                    </button>
+                  )
+
+                // Voeg hier toekomstige element types toe:
+                // case "TEXT":
+                //   return <div key={el.id}>...</div>
+                // case "TIMER":
+                //   return <div key={el.id}>...</div>
+
+                default:
+                  return null
+              }
+            })}
+
+          {/* Text content (legacy) */}
           {step.content && (
             <div
               style={{

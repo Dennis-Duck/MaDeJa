@@ -1,6 +1,5 @@
 export interface Element {
   id: string;
-  stepId: string;
   type: string;
   x: number;
   y: number;

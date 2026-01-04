@@ -18,7 +18,10 @@ export default async function Page({
 
   const step = await prisma.step.findUnique({
     where: { id: stepId },
-    include: { media: true },
+    include: {
+      media: true,
+    elements: true,
+    },
   });
 
   if (!step) {
