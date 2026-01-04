@@ -8,6 +8,7 @@ import { ContextMenu } from "./canvas/context-menu";
 import { useCanvasScale } from "@/app/hooks/use-canvas-scale";
 import { useCanvasInteraction } from "@/app/hooks/use-canvas-interaction";
 import { useKeyboardNavigation } from "@/app/hooks/use-keyboard-navigation";
+import { ButtonItem } from "./canvas/elements/button";
 
 const CANVAS_WIDTH = 1920;
 const CANVAS_HEIGHT = 1080;
@@ -245,6 +246,120 @@ export default function StepContent({
               }}
             />
           ))}
+          {step.elements
+  .sort((a, b) => a.z - b.z)
+  .map((el) => {
+    switch (el.type) {
+      case "BUTTON":
+        return (
+          <ButtonItem
+            key={el.id}
+            id={el.id}
+            x={el.x}
+            y={el.y}
+            width={el.width ?? 200}
+            height={el.height ?? 60}
+            z={el.z ?? 0}
+            label={el.text ?? "Button"}
+            isSelected={selectedItem === el.id}
+            isDragging={draggedItem === el.id}
+            resizeMode={resizeMode[el.id]}
+            onMouseDown={(e) => {
+              startDrag(e, el.id, el.x, el.y);
+              setSelectedItem(el.id);
+            }}
+            onClick={() => setSelectedItem(el.id)}
+            onContextMenu={(e) => handleContextMenu(e, el.id)}
+            onDelete={() => handleDelete(el.id)}
+            onResizeStart={(e, handle) =>
+              startResize(
+                e,
+                el.id,
+                handle,
+                el.width ?? 200,
+                el.height ?? 60,
+                el.x,
+                el.y
+              )
+            }
+          />
+        );
+
+      // case "TEXT":
+      //   return (
+      //     <TextItem
+      //       key={el.id}
+      //       id={el.id}
+      //       x={el.x}
+      //       y={el.y}
+      //       width={el.width ?? 300}
+      //       height={el.height ?? 100}
+      //       z={el.z ?? 0}
+      //       text={el.text ?? ""}
+      //       isSelected={selectedItem === el.id}
+      //       isDragging={draggedItem === el.id}
+      //       resizeMode={resizeMode[el.id]}
+      //       onMouseDown={(e) => {
+      //         startDrag(e, el.id, el.x, el.y);
+      //         setSelectedItem(el.id);
+      //       }}
+      //       onClick={() => setSelectedItem(el.id)}
+      //       onContextMenu={(e) => handleContextMenu(e, el.id)}
+      //       onDelete={() => handleDelete(el.id)}
+      //       onResizeStart={(e, handle) =>
+      //         startResize(
+      //           e,
+      //           el.id,
+      //           handle,
+      //           el.width ?? 300,
+      //           el.height ?? 100,
+      //           el.x,
+      //           el.y
+      //         )
+      //       }
+      //     />
+      //   );
+
+      // case "TIMER":
+      //   return (
+      //     <TimerItem
+      //       key={el.id}
+      //       id={el.id}
+      //       x={el.x}
+      //       y={el.y}
+      //       width={el.width ?? 200}
+      //       height={el.height ?? 50}
+      //       z={el.z ?? 0}
+      //       time={el.text ?? "00:00"} 
+      //       isSelected={selectedItem === el.id}
+      //       isDragging={draggedItem === el.id}
+      //       resizeMode={resizeMode[el.id]}
+      //       onMouseDown={(e) => {
+      //         startDrag(e, el.id, el.x, el.y);
+      //         setSelectedItem(el.id);
+      //       }}
+      //       onClick={() => setSelectedItem(el.id)}
+      //       onContextMenu={(e) => handleContextMenu(e, el.id)}
+      //       onDelete={() => handleDelete(el.id)}
+      //       onResizeStart={(e, handle) =>
+      //         startResize(
+      //           e,
+      //           el.id,
+      //           handle,
+      //           el.width ?? 200,
+      //           el.height ?? 50,
+      //           el.x,
+      //           el.y
+      //         )
+      //       }
+      //     />
+      //   );
+
+      default:
+        return null; // future-proof voor nieuwe types
+    }
+  })}
+
       </Canvas>
 
       <p

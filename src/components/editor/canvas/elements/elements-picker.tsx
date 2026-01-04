@@ -17,15 +17,23 @@ export default function ElementsPicker({
 }: ElementsPickerProps) {
 
   const addElement = async (type: string) => {
-    await fetch("/api/step-elements", {
-      method: "POST",
-      body: JSON.stringify({
-        stepId,
-        type,
-      }),
-    });
+    try {
+      const res = await fetch(`/api/step/${stepId}/elements`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
+      });
 
-    onElementAdded?.();
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to add element");
+      }
+
+      onElementAdded?.();
+    } catch (err) {
+      console.error("Error adding element:", err);
+      alert("Failed to add element");
+    }
   };
 
   return (

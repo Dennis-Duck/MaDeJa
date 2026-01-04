@@ -1,4 +1,3 @@
-// app/api/step/[stepId]/media/[mediaId]/route.ts
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma";
 
@@ -21,7 +20,6 @@ export async function DELETE(
   }
 
   try {
-    // check dat het media-item bij deze step hoort
     const media = await prisma.media.findUnique({
       where: { id: mediaId },
     });
@@ -33,7 +31,6 @@ export async function DELETE(
       );
     }
 
-    // delete media
     await prisma.media.delete({
       where: { id: mediaId },
     });

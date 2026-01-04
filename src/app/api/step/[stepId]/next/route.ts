@@ -21,7 +21,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
     const steps = await prisma.step.findMany({
       where: { flirtId },
       orderBy: { order: "asc" },
-      include: { media: true },
+      include: { 
+        media: true,
+        elements: true,
+      },
     });
 
     let nextStep;
@@ -43,7 +46,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
           content: "",
           order: steps.length + 1,
         },
-        include: { media: true },
+        include: { 
+          media: true,
+          elements: true,
+      },
       });
       steps.push(nextStep);
     }

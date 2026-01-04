@@ -16,7 +16,10 @@ export async function GET(req: Request, context: RouteContext) {
 
     const step = await prisma.step.findUnique({
       where: { id: stepId },
-      include: { media: true },
+      include: { 
+        media: true,
+        elements: true,
+      },
     });
 
     if (!step) {
@@ -52,7 +55,10 @@ export async function POST(req: NextRequest) {
         content: "",
         order: order,
       },
-      include: { media: true },
+      include: { 
+        media: true,
+        elements: true,
+      },
     });
 
     return NextResponse.json({ step });
@@ -97,7 +103,10 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
 
     const previousStep = await prisma.step.findFirst({
       where: { flirtId: step.flirtId, order: step.order - 1 },
-      include: { media: true },
+      include: { 
+        media: true,
+        elements: true,
+      },
     });
 
     return NextResponse.json({ success: true, previousStep });

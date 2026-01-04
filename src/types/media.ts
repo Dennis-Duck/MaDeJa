@@ -1,4 +1,3 @@
-
 export interface Media {
   id: string;
   url: string;
@@ -8,9 +7,4 @@ export interface Media {
   z?: number;
   width?: number | null; 
   height?: number | null;
-}
-
-export enum MediaType {
-  IMAGE = "IMAGE",
-  VIDEO = "VIDEO",
 }

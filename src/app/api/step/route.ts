@@ -18,7 +18,10 @@ export async function POST(req: Request) {
       content: "",
       order: order,
     },
-    include: { media: true },
+    include: { 
+      media: true,
+      elements: true,
+    },
   });
 
   return NextResponse.json({ step });

@@ -1,4 +1,5 @@
 import { Media } from "./media";
+import type { Element } from "./element"
 
 export interface Step {
   id: string;
@@ -6,4 +7,5 @@ export interface Step {
   order: number;
   content: string;
   media: Media[];
+  elements: Element[];
 }

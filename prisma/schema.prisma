@@ -37,6 +37,7 @@ model Step {
   flirt    Flirt    @relation(fields: [flirtId], references: [id], onDelete: Cascade)
   content  String
   media    Media[]
+  elements Element[]
   order    Int
 }
 
@@ -53,6 +54,18 @@ model Media {
   height Float?
 }
 
+model Element {
+  id        String   @id @default(cuid())
+  stepId    String
+  step      Step     @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  type      String   // "BUTTON" | "TEXT" | "TIMER"
+  x         Float    @default(0)
+  y         Float    @default(0)
+  z         Int      @default(0)
+  width     Float?
+  height    Float?
+  text      String?
+}
 
 
 

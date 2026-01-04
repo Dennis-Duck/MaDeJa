@@ -20,7 +20,10 @@ export async function POST(req: Request, context: RouteContext) {
 
     const previousStep = await prisma.step.findFirst({
       where: { flirtId, order: currentStep.order - 1 },
-      include: { media: true },
+      include: { 
+        media: true,
+        elements: true,
+      },
     });
 
     if (!previousStep) return NextResponse.json({ error: "No previous step" }, { status: 404 });
