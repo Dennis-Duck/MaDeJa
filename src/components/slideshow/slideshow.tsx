@@ -181,7 +181,7 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
                 .map((el) => (
                   <button
                     key={el.id}
-                    className="absolute px-3 py-1 rounded bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] transition-colors duration-150"
+                    className="absolute px-3 py-1 rounded bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] transition-colors duration-150 cursor-pointer active:scale-95"
                     style={{
                       left: `${((el.x ?? 0) / CANVAS_WIDTH) * 100}%`,
                       top: `${((el.y ?? 0) / CANVAS_HEIGHT) * 100}%`,

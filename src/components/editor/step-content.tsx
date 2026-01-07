@@ -39,6 +39,9 @@ export default function StepContent({
   const [contextMenu, setContextMenu] = useState<{
     x: number
     y: number
+    z: number
+    maxZ: number
+    canBringToFront: boolean
     item: CanvasItemIdentifier
   } | null>(null)
   const [resizeMode, setResizeMode] = useState<{ [key: string]: "scale" | "resize" | null }>({})
@@ -100,7 +103,7 @@ export default function StepContent({
   const updateSize = useCallback(
     async (item: CanvasItemIdentifier, width: number, height: number) => {
       const endpoint =
-        item.type === "media" ? `/api/step/${step.id}/media/${item.id}` : `/api/step/${step.id}/element/${item.id}`
+        item.type === "media" ? `/api/step/${step.id}/media/${item.id}` : `/api/step/${step.id}/elements/${item.id}`
 
       const res = await fetch(endpoint, {
         method: "PATCH",
@@ -139,21 +142,31 @@ export default function StepContent({
       let newZ = current.z ?? 0
       switch (action) {
         case "front":
-          newZ = maxZ + 1
+          const allZ = [...step.media, ...step.elements].map(i => i.z ?? (i.type === "element" ? 1 : 0))
+          const maxZAll = Math.max(...allZ)
+          newZ = maxZAll + 1
           break
         case "forward":
           newZ = (current.z ?? 0) + 1
           break
         case "backward":
-          newZ = Math.max(0, (current.z ?? 0) - 1)
+          if (item.type === "element") {
+            newZ = Math.max(1, (current.z ?? 1) - 1)
+          } else {
+            newZ = Math.max(0, (current.z ?? 0) - 1)
+          }
           break
         case "back":
-          newZ = Math.max(0, minZ - 1)
+          if (item.type === "element") {
+            newZ = 1
+          } else {
+            newZ = minZ
+          }
           break
       }
 
       const endpoint =
-        item.type === "media" ? `/api/step/${step.id}/media/${item.id}` : `/api/step/${step.id}/element/${item.id}`
+        item.type === "media" ? `/api/step/${step.id}/media/${item.id}` : `/api/step/${step.id}/elements/${item.id}`
 
       const res = await fetch(endpoint, {
         method: "PATCH",
@@ -182,7 +195,7 @@ export default function StepContent({
   const handleDelete = useCallback(
     async (item: CanvasItemIdentifier) => {
       const endpoint =
-        item.type === "media" ? `/api/step/${step.id}/media/${item.id}` : `/api/step/${step.id}/element/${item.id}`
+        item.type === "media" ? `/api/step/${step.id}/media/${item.id}` : `/api/step/${step.id}/elements/${item.id}`
 
       const res = await fetch(endpoint, { method: "DELETE" })
       const data = await res.json()
@@ -223,10 +236,25 @@ export default function StepContent({
   })
 
   const handleContextMenu = useCallback((e: React.MouseEvent, item: CanvasItemIdentifier) => {
-    e.preventDefault()
-    setContextMenu({ x: e.clientX, y: e.clientY, item })
-    setSelectedItem(item)
-  }, [])
+  e.preventDefault();
+
+  const source = item.type === "media" ? step.media : step.elements;
+  const current = source.find(i => i.id === item.id);
+
+  const z = current?.z ?? (item.type === "element" ? 1 : 0);
+
+  const allZ = [...step.media, ...step.elements].map(i => i.z ?? (i.type === "element" ? 1 : 0));
+  const maxZ = Math.max(...allZ);
+  
+  const itemsAtMaxZ = [...step.media, ...step.elements].filter(i => 
+    (i.z ?? (i.type === "element" ? 1 : 0)) === maxZ
+  ).length;
+
+  const canBringToFront = z < maxZ || (z === maxZ && itemsAtMaxZ > 1);
+
+  setContextMenu({ x: e.clientX, y: e.clientY, item, z, maxZ, canBringToFront })
+  setSelectedItem(item)
+}, [step.media, step.elements])
 
   const toggleResizeMode = useCallback((itemId: string, mode: "scale" | "resize") => {
     setResizeMode((prev) => ({
@@ -342,8 +370,16 @@ export default function StepContent({
 
       {contextMenu && (
         <ContextMenu
+          itemType={contextMenu.item.type}
           x={contextMenu.x}
           y={contextMenu.y}
+          z={
+            contextMenu.item.type === "element"
+              ? step.elements.find(el => el.id === contextMenu.item.id)?.z ?? 1
+              : step.media.find(m => m.id === contextMenu.item.id)?.z ?? 0
+          }
+          maxZ={contextMenu.maxZ}
+          canBringToFront={contextMenu.canBringToFront}
           resizeMode={resizeMode[contextMenu.item.id]}
           onDelete={() => handleDelete(contextMenu.item)}
           onToggleScale={() => toggleResizeMode(contextMenu.item.id, "scale")}

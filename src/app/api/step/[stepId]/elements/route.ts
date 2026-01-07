@@ -8,7 +8,7 @@ interface Params {
 export async function POST(req: NextRequest, { params }: { params: Promise<Params> }) {
   const { stepId } = await params;
   const body = await req.json();
-  const { type, x = 0, y = 0, z = 0, width, height, text } = body;
+  const { type, x = 0, y = 0, z = 1, width, height, text } = body;
 
   if (!type) return NextResponse.json({ error: "type is required" }, { status: 400 });
 

@@ -48,12 +48,17 @@ export async function PATCH(
       return NextResponse.json({ error: "Element not found for this step" }, { status: 404 });
     }
 
+    const safeZ =
+      z !== undefined
+        ? Math.max(1, z)
+        : undefined;
+
     const updated = await prisma.element.update({
       where: { id: elementId },
       data: {
         ...(x !== undefined && { x }),
         ...(y !== undefined && { y }),
-        ...(z !== undefined && { z }),
+        ...(z !== undefined && { z: safeZ }),
         ...(width !== undefined && { width }),
         ...(height !== undefined && { height }),
         ...(text !== undefined && { text }),
