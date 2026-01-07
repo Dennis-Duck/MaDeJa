@@ -17,7 +17,7 @@ interface MediaItemProps {
   isDragging: boolean
   resizeMode: "scale" | "resize" | null
   onMouseDown: (e: React.MouseEvent) => void
-  onClick: () => void
+  onClick: (e: React.MouseEvent) => void;
   onContextMenu: (e: React.MouseEvent) => void
   onDelete: () => void
   onResizeStart: (e: React.MouseEvent, handle: ResizeHandle) => void
@@ -55,7 +55,10 @@ export function MediaItem({
         outline: isSelected ? "2px solid #3b82f6" : "none",
         outlineOffset: "2px",
       }}
-      onMouseDown={onMouseDown}
+      onMouseDown={(e) => {
+        if (e.button === 2) return;
+        onMouseDown(e);
+      }}
       onClick={onClick}
       onContextMenu={onContextMenu}
     >
@@ -76,7 +79,16 @@ export function MediaItem({
             ×
           </button>
 
-          {isSelected && resizeMode && <ResizeHandles resizeMode={resizeMode} onResizeStart={onResizeStart} />}
+          {isSelected && resizeMode && (
+            <ResizeHandles
+              resizeMode={resizeMode}
+              onResizeStart={(e, handle) => {
+                if (e.button === 2) return; // Blokkeer resize bij rechterklik
+                onResizeStart(e, handle);
+              }}
+            />
+          )}
+
         </>
       ) : (
         <video src={url} controls className="w-full h-full rounded-lg block" />

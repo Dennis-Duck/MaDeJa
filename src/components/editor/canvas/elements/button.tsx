@@ -15,7 +15,7 @@ interface ButtonItemProps {
   isDragging: boolean
   resizeMode: "scale" | "resize" | null
   onMouseDown: (e: React.MouseEvent) => void
-  onClick: () => void
+  onClick: (e: React.MouseEvent) => void;
   onContextMenu: (e: React.MouseEvent) => void
   onDelete: () => void
   onResizeStart: (e: React.MouseEvent, handle: ResizeHandle) => void
@@ -52,7 +52,10 @@ export function ButtonItem({
         outline: isSelected ? "2px solid #3b82f6" : "none",
         outlineOffset: "2px",
       }}
-      onMouseDown={onMouseDown}
+      onMouseDown={(e) => {
+        if (e.button === 2) return;
+        onMouseDown(e);
+      }}
       onClick={onClick}
       onContextMenu={onContextMenu}
     >
@@ -70,7 +73,15 @@ export function ButtonItem({
         ×
       </button>
 
-      {isSelected && resizeMode && <ResizeHandles resizeMode={resizeMode} onResizeStart={onResizeStart} />}
+      {isSelected && resizeMode && (
+        <ResizeHandles
+          resizeMode={resizeMode}
+          onResizeStart={(e, handle) => {
+            if (e.button === 2) return;
+            onResizeStart(e, handle);
+          }}
+        />
+      )}
 
       <div className="absolute left-1 top-1 bg-black/60 text-white text-xs px-1 rounded pointer-events-none">
         Z: {z}

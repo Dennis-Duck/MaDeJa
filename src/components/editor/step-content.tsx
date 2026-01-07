@@ -236,25 +236,25 @@ export default function StepContent({
   })
 
   const handleContextMenu = useCallback((e: React.MouseEvent, item: CanvasItemIdentifier) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const source = item.type === "media" ? step.media : step.elements;
-  const current = source.find(i => i.id === item.id);
+    const source = item.type === "media" ? step.media : step.elements;
+    const current = source.find(i => i.id === item.id);
 
-  const z = current?.z ?? (item.type === "element" ? 1 : 0);
+    const z = current?.z ?? (item.type === "element" ? 1 : 0);
 
-  const allZ = [...step.media, ...step.elements].map(i => i.z ?? (i.type === "element" ? 1 : 0));
-  const maxZ = Math.max(...allZ);
-  
-  const itemsAtMaxZ = [...step.media, ...step.elements].filter(i => 
-    (i.z ?? (i.type === "element" ? 1 : 0)) === maxZ
-  ).length;
+    const allZ = [...step.media, ...step.elements].map(i => i.z ?? (i.type === "element" ? 1 : 0));
+    const maxZ = Math.max(...allZ);
 
-  const canBringToFront = z < maxZ || (z === maxZ && itemsAtMaxZ > 1);
+    const itemsAtMaxZ = [...step.media, ...step.elements].filter(i =>
+      (i.z ?? (i.type === "element" ? 1 : 0)) === maxZ
+    ).length;
 
-  setContextMenu({ x: e.clientX, y: e.clientY, item, z, maxZ, canBringToFront })
-  setSelectedItem(item)
-}, [step.media, step.elements])
+    const canBringToFront = z < maxZ || (z === maxZ && itemsAtMaxZ > 1);
+
+    setContextMenu({ x: e.clientX, y: e.clientY, item, z, maxZ, canBringToFront })
+    setSelectedItem(item)
+  }, [step.media, step.elements])
 
   const toggleResizeMode = useCallback((itemId: string, mode: "scale" | "resize") => {
     setResizeMode((prev) => ({
@@ -276,7 +276,13 @@ export default function StepContent({
         scale={scale}
         onMouseMove={(e) => handleMove(e, contextMenu ? resizeMode[contextMenu.item.id] : null)}
         onMouseUp={endInteraction}
-        onClick={() => setContextMenu(null)}
+
+        onClick={() => {
+          setContextMenu(null);
+          setResizeMode({}); // Dit nog fixen
+          setSelectedItem(null);
+        }}
+
       >
         {step.media
           .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
@@ -303,7 +309,10 @@ export default function StepContent({
                     setSelectedItem(itemIdentifier)
                   }
                 }}
-                onClick={() => setSelectedItem(itemIdentifier)}
+                onClick={(e) => {
+                  e.stopPropagation() // Voeg dit toe!
+                  setSelectedItem(itemIdentifier)
+                }}
                 onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
                 onDelete={() => handleDelete(itemIdentifier)}
                 onResizeStart={(e, handle) => {
@@ -349,7 +358,10 @@ export default function StepContent({
                       startDrag(e, el.id, "element", el.x, el.y)
                       setSelectedItem(itemIdentifier)
                     }}
-                    onClick={() => setSelectedItem(itemIdentifier)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedItem(itemIdentifier)
+                    }}
                     onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
                     onDelete={() => handleDelete(itemIdentifier)}
                     onResizeStart={(e, handle) =>
