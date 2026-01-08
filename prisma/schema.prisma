@@ -38,6 +38,7 @@ model Step {
   content  String
   media    Media[]
   elements Element[]
+  logics   Logic[]
   order    Int
 }
 
@@ -66,6 +67,26 @@ model Element {
   height    Float?
   text      String?
 }
+
+model Logic {
+  id          String   @id @default(cuid())
+  stepId      String
+  step        Step     @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  type        String   // "TRIGGER" | "JUMP" | "CHECK" | "ACTION"
+  subtype     String?  // bv. "BUTTON_CLICK" | "TIMER" | "PAGE_LOAD" (afhankelijk van type)
+  config      String?  // instellingen per type, eventueel json
+
+  parentId    String?
+  parentType  String?  // "TRIGGER" | "CHECK"
+
+  x           Float    @default(0)
+  y           Float    @default(0)
+  z           Int      @default(0)
+  width       Float?
+  height      Float?
+}
+
 
 
 

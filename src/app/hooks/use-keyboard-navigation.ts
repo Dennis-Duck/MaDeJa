@@ -4,7 +4,7 @@ import { useEffect } from "react"
 
 interface CanvasItemIdentifier {
   id: string
-  type: "media" | "element"
+  type: "media" | "element" | "logic"
 }
 
 interface Item {

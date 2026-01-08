@@ -1,7 +1,7 @@
 "use client";
 
 interface ContextMenuProps {
-  itemType: "media" | "element";
+  itemType: "media" | "element" | "logic";
   x: number;
   y: number;
   z: number;

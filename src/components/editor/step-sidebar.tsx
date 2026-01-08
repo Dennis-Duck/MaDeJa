@@ -2,6 +2,7 @@
 
 import UploadPic from "@/components/editor/step-upload-media";
 import ElementsPicker from "./canvas/elements/elements-picker";
+import LogicsPicker from "./canvas/logics/logics-picker";
 
 interface StepSidebarProps {
   stepId: string;
@@ -21,6 +22,15 @@ export default function StepSidebar({ stepId, onStepChange }: StepSidebarProps) 
         <ElementsPicker
           stepId={stepId}
           onElementAdded={onStepChange}
+        />
+      </div>
+
+       <div className="p-2 border rounded shadow-sm">
+        <h3 className="mb-3 font-semibold">Add logic
+        </h3>
+        <LogicsPicker
+          stepId={stepId}
+          onLogicAdded={onStepChange}
         />
       </div>
     </div>

@@ -7,7 +7,7 @@ export type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w"
 
 interface CanvasItemIdentifier {
   id: string
-  type: "media" | "element"
+  type: "media" | "element" | "logic"
 }
 
 interface UseCanvasInteractionProps {
@@ -18,12 +18,12 @@ interface UseCanvasInteractionProps {
 
 export function useCanvasInteraction({ scale, onPositionUpdate, onSizeUpdate }: UseCanvasInteractionProps) {
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
-  const draggedItemType = useRef<"media" | "element" | null>(null)
+  const draggedItemType = useRef<"media" | "element" | "logic" | null>(null)
   const dragStart = useRef<{ x: number; y: number; itemX: number; itemY: number } | null>(null)
 
   const [resizeState, setResizeState] = useState<{
     itemId: string
-    itemType: "media" | "element"
+    itemType: "media" | "element" | "logic"
     handle: ResizeHandle
     startX: number
     startY: number
@@ -34,7 +34,7 @@ export function useCanvasInteraction({ scale, onPositionUpdate, onSizeUpdate }: 
   } | null>(null)
 
   const startDrag = useCallback(
-    (e: React.MouseEvent, itemId: string, itemType: "media" | "element", itemX: number, itemY: number) => {
+    (e: React.MouseEvent, itemId: string, itemType: "media" | "element" | "logic", itemX: number, itemY: number) => {
       e.stopPropagation()
       setDraggedItem(itemId)
       draggedItemType.current = itemType
@@ -47,7 +47,7 @@ export function useCanvasInteraction({ scale, onPositionUpdate, onSizeUpdate }: 
     (
       e: React.MouseEvent,
       itemId: string,
-      itemType: "media" | "element",
+      itemType: "media" | "element" | "logic",
       handle: ResizeHandle,
       width: number,
       height: number,
