@@ -51,16 +51,16 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
     return () => document.removeEventListener("fullscreenchange", handler)
   }, [])
 
-  // Scale gebaseerd op beschikbare ruimte, met topStrip "window" hoogte
+
   useEffect(() => {
     const updateScale = () => {
       if (!containerRef.current) return
       const containerWidth = containerRef.current.offsetWidth
       const containerHeight = containerRef.current.offsetHeight
-      const availableHeight = Math.max(containerHeight - effectiveTopStrip, 0) // ruimte voor canvas window
+      const availableHeight = Math.max(containerHeight - effectiveTopStrip, 0) 
       const scaleX = containerWidth / CANVAS_WIDTH
       const scaleY = availableHeight / CANVAS_HEIGHT
-      setScale(Math.min(scaleX, scaleY)) // contain: geen cropping
+      setScale(Math.min(scaleX, scaleY))
     }
     updateScale()
     window.addEventListener("resize", updateScale)
@@ -199,7 +199,7 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
         </div>
       </div>
 
-      {/* Navigatie pijlen (blijven op container, dus ook zichtbaar over de bovenrand) */}
+      {/* Navigatie pijlen */}
       <button
         onClick={prevSlide}
         className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded z-10 transition-colors bg-[var(--background-secondary)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] hover:border-[var(--hover-border)]"

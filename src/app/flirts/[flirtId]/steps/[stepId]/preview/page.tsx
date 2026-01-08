@@ -20,7 +20,7 @@ export default async function Page({
     where: { id: stepId },
     include: {
       media: true,
-    elements: true,
+      elements: true,
     },
   });
 
@@ -28,5 +28,11 @@ export default async function Page({
     notFound();
   }
 
-  return <StepPreview step={step} />;
+  return (
+    <StepPreview
+      step={step}
+      flirtId={(await params).flirtId}
+      stepId={(await params).stepId}
+    />
+  );
 }

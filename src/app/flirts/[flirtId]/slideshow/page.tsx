@@ -18,7 +18,7 @@ export default async function Page({
         orderBy: { order: "asc" },
         include: {
           media: true,
-          elements: true, // Voeg elements toe aan de include
+          elements: true,
         },
       },
     },
@@ -26,7 +26,6 @@ export default async function Page({
 
   if (!flirt) notFound()
 
-  // Map Prisma data naar juiste types
   const steps = flirt.steps.map((step) => ({
     media: step.media.map((m): Media => ({
       id: m.id,

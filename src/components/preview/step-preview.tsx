@@ -2,13 +2,15 @@
 
 import type { Step } from "@/types/step"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { useState, useRef, useEffect } from "react"
 
 interface StepPreviewProps {
   step: Step
+  flirtId: string
+  stepId: string
 }
 
-// Vooraf ingestelde viewport groottes
 const VIEWPORT_PRESETS = {
   mobile: { width: 375, height: 667, label: "Mobile (9:16)" },
   tablet: { width: 768, height: 1024, label: "Tablet (3:4)" },
@@ -17,14 +19,15 @@ const VIEWPORT_PRESETS = {
 
 type ViewportPreset = keyof typeof VIEWPORT_PRESETS
 
-// Canvas = "wereldruimte" van je editor (net zoals in Slideshow)
 const CANVAS_WIDTH = 1920
 const CANVAS_HEIGHT = 1080
 
-export default function StepPreview({ step }: StepPreviewProps) {
+export default function StepPreview({ step, flirtId, stepId }: StepPreviewProps) {
   const [viewportPreset, setViewportPreset] = useState<ViewportPreset>("desktop")
   const [scale, setScale] = useState(1)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const router = useRouter();
 
   const viewport = VIEWPORT_PRESETS[viewportPreset]
 
@@ -34,7 +37,6 @@ export default function StepPreview({ step }: StepPreviewProps) {
       const containerWidth = containerRef.current.offsetWidth
       const containerHeight = containerRef.current.offsetHeight
 
-      // Scale the canvas (1920x1080) to fit the viewport
       const scaleX = containerWidth / CANVAS_WIDTH
       const scaleY = containerHeight / CANVAS_HEIGHT
       setScale(Math.min(scaleX, scaleY))
@@ -53,8 +55,16 @@ export default function StepPreview({ step }: StepPreviewProps) {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[var(--background)] p-5 gap-5">
-      {/* Viewport selector */}
-      <div className="flex gap-3 flex-wrap justify-center">
+      <div className="flex gap-3 flex-wrap justify-center items-center">
+        {/* Back to editor knop */}
+        <button
+          onClick={() => router.push(`/flirts/${flirtId}/steps/${stepId}`)}
+          className="px-4 py-2 rounded-lg font-medium bg-[var(--background-secondary)] border border-[var(--border)] hover:bg-[var(--hover-bg)]"
+        >
+          ← Editor
+        </button>
+
+        {/* Viewport selector */}
         {(Object.keys(VIEWPORT_PRESETS) as ViewportPreset[]).map((preset) => (
           <button
             key={preset}
@@ -199,6 +209,13 @@ export default function StepPreview({ step }: StepPreviewProps) {
           </div>
         </div>
       </div>
+      <button
+        onClick={() => router.push(`/flirts/${flirtId}/steps/${stepId}`)}
+        className="px-4 py-2 rounded-lg font-medium bg-[var(--background-secondary)] border border-[var(--border)] hover:bg-[var(--hover-bg)]"
+      >
+        ← Back to editor
+      </button>
+
     </div>
   )
 }

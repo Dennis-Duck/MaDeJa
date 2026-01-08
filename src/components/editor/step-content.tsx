@@ -310,7 +310,6 @@ export default function StepContent({
                   }
                 }}
                 onClick={(e) => {
-                  e.stopPropagation()
                   setSelectedItem(itemIdentifier)
                 }}
                 onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
@@ -358,8 +357,7 @@ export default function StepContent({
                       startDrag(e, el.id, "element", el.x, el.y)
                       setSelectedItem(itemIdentifier)
                     }}
-                    onClick={(e) => {
-                      e.stopPropagation()
+                    onClick={(e) => { 
                       setSelectedItem(itemIdentifier)
                     }}
                     onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
