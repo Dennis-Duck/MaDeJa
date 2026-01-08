@@ -8,12 +8,12 @@ interface CanvasProps {
   scale: number;
   onMouseMove: (e: React.MouseEvent) => void;
   onMouseUp: () => void;
-  onClick: () => void;
+  onMouseDown: (e: React.MouseEvent) => void;
   children: ReactNode;
 }
 
 export const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
-  ({ width, height, scale, onMouseMove, onMouseUp, onClick, children }, ref) => {
+  ({ width, height, scale, onMouseMove, onMouseUp, onMouseDown, children }, ref) => {
     return (
       <div
         ref={ref}
@@ -22,7 +22,7 @@ export const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
           width: `min(90vw, ${(80 * width) / height}vh)`,
           height: `min(80vh, ${(90 * height) / width}vw)`,
         }}
-        onClick={onClick}
+        onMouseDown={onMouseDown}
       >
         <div
           className="absolute top-1/2 left-1/2"

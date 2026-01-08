@@ -277,10 +277,10 @@ export default function StepContent({
         onMouseMove={(e) => handleMove(e, contextMenu ? resizeMode[contextMenu.item.id] : null)}
         onMouseUp={endInteraction}
 
-        onClick={() => {
-          setContextMenu(null);
-          setResizeMode({}); // Dit nog fixen
-          setSelectedItem(null);
+        onMouseDown={(e) => {
+          setContextMenu(null)
+          setResizeMode({})
+          setSelectedItem(null)
         }}
 
       >
@@ -310,7 +310,7 @@ export default function StepContent({
                   }
                 }}
                 onClick={(e) => {
-                  e.stopPropagation() // Voeg dit toe!
+                  e.stopPropagation()
                   setSelectedItem(itemIdentifier)
                 }}
                 onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
