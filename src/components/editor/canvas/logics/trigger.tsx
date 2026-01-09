@@ -64,12 +64,12 @@ export function TriggerItem({
         className="relative w-full h-full bg-green-500 text-white font-semibold rounded-lg shadow-lg flex items-center justify-center pointer-events-none"
         style={{ fontSize: `${Math.min(width / 10, height / 3)}px` }}
       >
-        <div className="absolute left-4 flex items-center">
+        <div className="absolute left-3 flex items-center">
           <span className="text-yellow-300">⚡</span>
         </div>
 
         <span className="text-center">
-          Trigger{(subtype && `: ${subtype}`) || ""}
+          {subtype ? `${subtype.toLowerCase()}` : "Trigger"}
         </span>
       </div>
 

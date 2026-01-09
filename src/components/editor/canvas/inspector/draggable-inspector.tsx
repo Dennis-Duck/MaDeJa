@@ -1,4 +1,5 @@
 "use client"
+
 import React, { useRef } from "react"
 import { Z } from "@/lib/z-index"
 
@@ -60,7 +61,7 @@ export function DraggableInspector({ position, onPositionChange, onSizeChange, c
   return (
     <div
       ref={ref}
-      className="absolute bg-gray-800 p-2 rounded shadow-lg cursor-move"
+      className="absolute bg-[var(--accent)] p-2 rounded shadow-lg cursor-move"
       style={{
         top: position.y,
         left: position.x,

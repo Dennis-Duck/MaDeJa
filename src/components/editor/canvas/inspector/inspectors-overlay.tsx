@@ -5,21 +5,24 @@ import { DraggableInspector } from "./draggable-inspector";
 import { LogicInspector } from './logics/logic-inspector';
 import { VariableInspector } from './variables/variabele-inspector';
 import { ElementInspector } from './elements/element-inspector';
+import { Step } from "@/types/step";
 
 interface SelectedItem {
   id: string;
   type: "logic" | "variable" | "element";
-  subtype?: string; // bv "trigger", "jump", "button", "timer"
+  subtype?: string;
 }
 
 interface CanvasItemIdentifier {
   id: string;
   type: "logic" | "variable" | "element" | "media";
-  subtype?: string; // bv "trigger", "jump", "button", "timer"
+  subtype?: string;
 }
 
 interface InspectorsOverlayProps {
   selectedItem: CanvasItemIdentifier | null;
+  step?: Step;
+  onStepContentChange?: () => void;
 }
 
 function mapSelectedItem(item: CanvasItemIdentifier | null): SelectedItem | null {
@@ -31,7 +34,7 @@ function mapSelectedItem(item: CanvasItemIdentifier | null): SelectedItem | null
   switch (item.type) {
     case "logic":
       type = "logic";
-      subtype = item.subtype; // bv "trigger", "jump"
+      subtype = item.subtype;
       break;
     case "variable":
       type = "variable";
@@ -47,14 +50,11 @@ function mapSelectedItem(item: CanvasItemIdentifier | null): SelectedItem | null
   return { id: item.id, type, subtype };
 }
 
+export function InspectorsOverlay({ selectedItem, step, onStepContentChange }: InspectorsOverlayProps) {
+  const [logicPos, setLogicPos] = useState({ x: 1100, y: 50, width: 350, height: 400 });
+  const [variablePos, setVariablePos] = useState({ x: 700, y: 500, width: 300, height: 400 });
+  const [elementPos, setElementPos] = useState({ x: 200, y: 200, width: 320, height: 400 });
 
-export function InspectorsOverlay({ selectedItem }: InspectorsOverlayProps) {
-  // Posities en groottes van de draggable inspectors
-  const [logicPos, setLogicPos] = useState({ x: 20, y: 20, width: 320, height: 400 });
-  const [variablePos, setVariablePos] = useState({ x: 1600, y: 20, width: 300, height: 400 });
-  const [elementPos, setElementPos] = useState({ x: 800, y: 600, width: 350, height: 400 });
-
-  // Map het geselecteerde item naar interne SelectedItem type
   const mappedItem = mapSelectedItem(selectedItem);
 
   return (
@@ -70,7 +70,15 @@ export function InspectorsOverlay({ selectedItem }: InspectorsOverlayProps) {
             setLogicPos((prev) => ({ ...prev, ...size }))
           }
         >
-          <LogicInspector logicId={mappedItem.id} subtype={mappedItem.subtype} />
+          <LogicInspector
+            logicId={mappedItem.id}
+            subtype={mappedItem.subtype}
+            step={step}
+            onUpdateStep={() => {
+              if (!step) return;
+              onStepContentChange?.();
+            }}
+          />
         </DraggableInspector>
       )}
 
@@ -100,7 +108,15 @@ export function InspectorsOverlay({ selectedItem }: InspectorsOverlayProps) {
             setElementPos((prev) => ({ ...prev, ...size }))
           }
         >
-          <ElementInspector elementId={mappedItem.id} />
+          <ElementInspector
+            elementId={mappedItem.id}
+            step={step}
+            onUpdateStep={() => {
+              if (!step) return;
+              onStepContentChange?.();
+            }}
+          />
+
         </DraggableInspector>
       )}
     </>

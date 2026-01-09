@@ -42,7 +42,7 @@ export default function ElementsPicker({
         <button
           key={el.type}
           onClick={() => addElement(el.type)}
-          className="border rounded-md px-2 py-2 text-sm hover:bg-muted transition"
+          className="py-2 px-4 rounded bg-[var(--accent)] text-[var(--foreground)] hover:bg-[var(--hover-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           + {el.label}
         </button>

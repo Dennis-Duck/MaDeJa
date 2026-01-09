@@ -421,7 +421,11 @@ export default function StepContent({
       </Canvas>
 
       {/* Inspectors overlay */}
-      <InspectorsOverlay selectedItem={selectedItem} />
+      <InspectorsOverlay
+        selectedItem={selectedItem}
+        step={step}
+        onStepContentChange={onStepContentChange}
+      />
 
       <p className="text-xs text-muted-foreground mt-2" style={{ visibility: selectedItem ? "visible" : "hidden" }}>
         Use arrow keys to move the selected item
