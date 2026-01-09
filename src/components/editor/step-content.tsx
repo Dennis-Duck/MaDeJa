@@ -12,6 +12,7 @@ import { useKeyboardNavigation } from "@/app/hooks/use-keyboard-navigation"
 import { ButtonItem } from "./canvas/elements/button"
 import { TriggerItem } from "./canvas/logics/trigger"
 import { JumpItem } from "./canvas/logics/jump"
+import { InspectorsOverlay } from "./canvas/inspector/inspectors-overlay"
 
 const CANVAS_WIDTH = 1920
 const CANVAS_HEIGHT = 1080
@@ -27,6 +28,7 @@ type CanvasItemType = keyof typeof COLLECTION_MAP
 interface CanvasItemIdentifier {
   id: string
   type: CanvasItemType
+  subtype?: string
 }
 
 interface StepContentProps {
@@ -315,7 +317,7 @@ export default function StepContent({
         {step.elements
           .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
           .map((el) => {
-            const itemIdentifier: CanvasItemIdentifier = { id: el.id, type: "element" }
+            const itemIdentifier: CanvasItemIdentifier = { id: el.id, type: "element", subtype: el.type }
 
             switch (el.type) {
               case "BUTTON":
@@ -336,7 +338,7 @@ export default function StepContent({
                       startDrag(e, el.id, "element", el.x, el.y)
                       setSelectedItem(itemIdentifier)
                     }}
-                    onClick={(e) => { 
+                    onClick={(e) => {
                       setSelectedItem(itemIdentifier)
                     }}
                     onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
@@ -352,71 +354,74 @@ export default function StepContent({
             }
           })}
 
-          {step.logics
-  .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
-  .map((logic) => {
-    const itemIdentifier: CanvasItemIdentifier = { id: logic.id, type: "logic" }
+        {step.logics
+          .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
+          .map((logic) => {
+            const itemIdentifier: CanvasItemIdentifier = { id: logic.id, type: "logic", subtype: logic.type }
 
-    switch (logic.type) {
-      case "TRIGGER":
-        return (
-          <TriggerItem
-            key={logic.id}
-            id={logic.id}
-            subtype={logic.subtype ?? undefined}
-            x={logic.x}
-            y={logic.y}
-            width={logic.width ?? 150}
-            height={logic.height ?? 50}
-            z={logic.z ?? 0}
-            isSelected={selectedItem?.id === logic.id && selectedItem?.type === "logic"}
-            isDragging={draggedItem === logic.id}
-            resizeMode={resizeMode[logic.id]}
-            onMouseDown={(e) => {
-              startDrag(e, logic.id, "logic", logic.x, logic.y)
-              setSelectedItem(itemIdentifier)
-            }}
-            onClick={() => setSelectedItem(itemIdentifier)}
-            onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
-            onDelete={() => handleDelete(itemIdentifier)}
-            onResizeStart={(e, handle) =>
-              startResize(e, logic.id, "logic", handle, logic.width ?? 150, logic.height ?? 50, logic.x, logic.y)
+            switch (logic.type) {
+              case "TRIGGER":
+                return (
+                  <TriggerItem
+                    key={logic.id}
+                    id={logic.id}
+                    subtype={logic.subtype ?? undefined}
+                    x={logic.x}
+                    y={logic.y}
+                    width={logic.width ?? 150}
+                    height={logic.height ?? 50}
+                    z={logic.z ?? 0}
+                    isSelected={selectedItem?.id === logic.id && selectedItem?.type === "logic"}
+                    isDragging={draggedItem === logic.id}
+                    resizeMode={resizeMode[logic.id]}
+                    onMouseDown={(e) => {
+                      startDrag(e, logic.id, "logic", logic.x, logic.y)
+                      setSelectedItem(itemIdentifier)
+                    }}
+                    onClick={() => setSelectedItem(itemIdentifier)}
+                    onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
+                    onDelete={() => handleDelete(itemIdentifier)}
+                    onResizeStart={(e, handle) =>
+                      startResize(e, logic.id, "logic", handle, logic.width ?? 150, logic.height ?? 50, logic.x, logic.y)
+                    }
+                  />
+                )
+              case "ACTION":
+              case "CHECK":
+              case "JUMP":
+                return (
+                  <JumpItem
+                    key={logic.id}
+                    id={logic.id}
+                    x={logic.x}
+                    y={logic.y}
+                    width={logic.width ?? 150}
+                    height={logic.height ?? 50}
+                    z={logic.z ?? 0}
+                    isSelected={selectedItem?.id === logic.id && selectedItem?.type === "logic"}
+                    isDragging={draggedItem === logic.id}
+                    resizeMode={resizeMode[logic.id]}
+                    onMouseDown={(e) => {
+                      startDrag(e, logic.id, "logic", logic.x, logic.y)
+                      setSelectedItem(itemIdentifier)
+                    }}
+                    onClick={() => setSelectedItem(itemIdentifier)}
+                    onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
+                    onDelete={() => handleDelete(itemIdentifier)}
+                    onResizeStart={(e, handle) =>
+                      startResize(e, logic.id, "logic", handle, logic.width ?? 150, logic.height ?? 50, logic.x, logic.y)
+                    }
+                  />
+                )
+              default:
+                return null
             }
-          />
-        )
-      case "ACTION":
-      case "CHECK":
-      case "JUMP":
-        return (
-          <JumpItem
-            key={logic.id}
-            id={logic.id}
-            x={logic.x}
-            y={logic.y}
-            width={logic.width ?? 150}
-            height={logic.height ?? 50}
-            z={logic.z ?? 0}
-            isSelected={selectedItem?.id === logic.id && selectedItem?.type === "logic"}
-            isDragging={draggedItem === logic.id}
-            resizeMode={resizeMode[logic.id]}
-            onMouseDown={(e) => {
-              startDrag(e, logic.id, "logic", logic.x, logic.y)
-              setSelectedItem(itemIdentifier)
-            }}
-            onClick={() => setSelectedItem(itemIdentifier)}
-            onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
-            onDelete={() => handleDelete(itemIdentifier)}
-            onResizeStart={(e, handle) =>
-              startResize(e, logic.id, "logic", handle, logic.width ?? 150, logic.height ?? 50, logic.x, logic.y)
-            }
-          />
-        )
-      default:
-        return null
-    }
-  })}
+          })}
 
       </Canvas>
+
+      {/* Inspectors overlay */}
+      <InspectorsOverlay selectedItem={selectedItem} />
 
       <p className="text-xs text-muted-foreground mt-2" style={{ visibility: selectedItem ? "visible" : "hidden" }}>
         Use arrow keys to move the selected item

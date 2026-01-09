@@ -2,6 +2,7 @@
 
 import type { ResizeHandle } from "@/app/hooks/use-canvas-interaction"
 import { ResizeHandles } from "../resize-handles"
+import { Z } from "@/lib/z-index"
 
 interface JumpItemProps {
   id: string
@@ -45,7 +46,7 @@ export function JumpItem({
         top: y,
         width,
         height,
-        zIndex: z,
+        zIndex: Z.LOGIC + z,
         cursor: isDragging ? "grabbing" : "grab",
         outline: isSelected ? "2px solid #3b82f6" : "none",
         outlineOffset: "2px",
@@ -58,10 +59,16 @@ export function JumpItem({
       onContextMenu={onContextMenu}
     >
       <div
-        className="w-full h-full bg-purple-500 text-white font-semibold rounded-lg shadow-lg flex items-center justify-center pointer-events-none"
+        className="relative w-full h-full bg-purple-500 text-white font-semibold rounded-lg shadow-lg flex items-center justify-center pointer-events-none"
         style={{ fontSize: `${Math.min(width / 10, height / 3)}px` }}
       >
-        Jump
+        <div className="absolute left-5 flex items-center text-blue-200">
+          ➜
+        </div>
+
+        <span className="text-center">
+          Jump
+        </span>
       </div>
 
       <button
@@ -80,10 +87,6 @@ export function JumpItem({
           }}
         />
       )}
-
-      <div className="absolute left-1 top-1 bg-black/60 text-white text-xs px-1 rounded pointer-events-none">
-        Z: {z}
-      </div>
     </div>
   )
 }
