@@ -18,6 +18,7 @@ export default async function Page({
     include: {
       media: true,
       elements: true,
+      logics: true,
     },
   });
 

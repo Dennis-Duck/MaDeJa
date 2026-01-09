@@ -16,7 +16,13 @@ import { JumpItem } from "./canvas/logics/jump"
 const CANVAS_WIDTH = 1920
 const CANVAS_HEIGHT = 1080
 
-type CanvasItemType = "media" | "element" | "logic"
+const COLLECTION_MAP = {
+  media: "media",
+  element: "elements",
+  logic: "logics",
+} as const
+
+type CanvasItemType = keyof typeof COLLECTION_MAP
 
 interface CanvasItemIdentifier {
   id: string
@@ -75,8 +81,7 @@ export default function StepContent({
 
   const updatePosition = useCallback(
     async (item: CanvasItemIdentifier, x: number, y: number) => {
-      const endpoint =
-        item.type === "media" ? `/api/step/${step.id}/media/${item.id}` : `/api/step/${step.id}/elements/${item.id}`
+      const endpoint = `/api/step/${step.id}/${COLLECTION_MAP[item.type]}/${item.id}`
 
       const res = await fetch(endpoint, {
         method: "PATCH",
@@ -85,17 +90,11 @@ export default function StepContent({
       })
 
       if (res.ok) {
-        if (item.type === "media") {
-          setStep((prev) => ({
-            ...prev,
-            media: prev.media.map((m) => (m.id === item.id ? { ...m, x, y } : m)),
-          }))
-        } else {
-          setStep((prev) => ({
-            ...prev,
-            elements: prev.elements.map((el) => (el.id === item.id ? { ...el, x, y } : el)),
-          }))
-        }
+        const collectionKey = COLLECTION_MAP[item.type]
+        setStep((prev) => ({
+          ...prev,
+          [collectionKey]: prev[collectionKey].map((i) => (i.id === item.id ? { ...i, x, y } : i)),
+        }))
         onStepContentChange?.()
       }
     },
@@ -104,8 +103,7 @@ export default function StepContent({
 
   const updateSize = useCallback(
     async (item: CanvasItemIdentifier, width: number, height: number) => {
-      const endpoint =
-        item.type === "media" ? `/api/step/${step.id}/media/${item.id}` : `/api/step/${step.id}/elements/${item.id}`
+      const endpoint = `/api/step/${step.id}/${COLLECTION_MAP[item.type]}/${item.id}`
 
       const res = await fetch(endpoint, {
         method: "PATCH",
@@ -114,17 +112,11 @@ export default function StepContent({
       })
 
       if (res.ok) {
-        if (item.type === "media") {
-          setStep((prev) => ({
-            ...prev,
-            media: prev.media.map((m) => (m.id === item.id ? { ...m, width, height } : m)),
-          }))
-        } else {
-          setStep((prev) => ({
-            ...prev,
-            elements: prev.elements.map((el) => (el.id === item.id ? { ...el, width, height } : el)),
-          }))
-        }
+        const collectionKey = COLLECTION_MAP[item.type]
+        setStep((prev) => ({
+          ...prev,
+          [collectionKey]: prev[collectionKey].map((i) => (i.id === item.id ? { ...i, width, height } : i)),
+        }))
         onStepContentChange?.()
       }
     },
@@ -133,7 +125,8 @@ export default function StepContent({
 
   const updateLayer = useCallback(
     async (item: CanvasItemIdentifier, action: "front" | "forward" | "backward" | "back") => {
-      const allItems = item.type === "media" ? step.media : step.elements
+      const collectionKey = COLLECTION_MAP[item.type]
+      const allItems = step[collectionKey]
       const current = allItems.find((i) => i.id === item.id)
       if (!current) return
 
@@ -144,7 +137,7 @@ export default function StepContent({
       let newZ = current.z ?? 0
       switch (action) {
         case "front":
-          const allZ = [...step.media, ...step.elements].map(i => i.z ?? (i.type === "element" ? 1 : 0))
+          const allZ = [...step.media, ...step.elements, ...step.logics].map(i => i.z ?? (i.type === "element" ? 1 : 0))
           const maxZAll = Math.max(...allZ)
           newZ = maxZAll + 1
           break
@@ -167,8 +160,7 @@ export default function StepContent({
           break
       }
 
-      const endpoint =
-        item.type === "media" ? `/api/step/${step.id}/media/${item.id}` : `/api/step/${step.id}/elements/${item.id}`
+      const endpoint = `/api/step/${step.id}/${COLLECTION_MAP[item.type]}/${item.id}`
 
       const res = await fetch(endpoint, {
         method: "PATCH",
@@ -177,17 +169,10 @@ export default function StepContent({
       })
 
       if (res.ok) {
-        if (item.type === "media") {
-          setStep((prev) => ({
-            ...prev,
-            media: prev.media.map((m) => (m.id === item.id ? { ...m, z: newZ } : m)),
-          }))
-        } else {
-          setStep((prev) => ({
-            ...prev,
-            elements: prev.elements.map((el) => (el.id === item.id ? { ...el, z: newZ } : el)),
-          }))
-        }
+        setStep((prev) => ({
+          ...prev,
+          [collectionKey]: prev[collectionKey].map((i) => (i.id === item.id ? { ...i, z: newZ } : i)),
+        }))
         onStepContentChange?.()
       }
     },
@@ -196,30 +181,21 @@ export default function StepContent({
 
   const handleDelete = useCallback(
     async (item: CanvasItemIdentifier) => {
-      const endpoint =
-        item.type === "media" ? `/api/step/${step.id}/media/${item.id}` : `/api/step/${step.id}/elements/${item.id}`
+      const endpoint = `/api/step/${step.id}/${COLLECTION_MAP[item.type]}/${item.id}`
 
       const res = await fetch(endpoint, { method: "DELETE" })
-      const data = await res.json()
+      if (!res.ok) return
 
-      if (data.ok) {
-        if (item.type === "media") {
-          setStep((prev) => ({
-            ...prev,
-            media: prev.media.filter((m) => m.id !== item.id),
-          }))
-        } else {
-          setStep((prev) => ({
-            ...prev,
-            elements: prev.elements.filter((el) => el.id !== item.id),
-          }))
-        }
-        onStepContentChange?.()
-        if (selectedItem?.id === item.id && selectedItem?.type === item.type) {
-          setSelectedItem(null)
-        }
-      } else {
-        console.error(data.error)
+      const collectionKey = COLLECTION_MAP[item.type]
+      setStep((prev) => ({
+        ...prev,
+        [collectionKey]: prev[collectionKey].filter((i) => i.id !== item.id),
+      }))
+
+      onStepContentChange?.()
+
+      if (selectedItem?.id === item.id && selectedItem?.type === item.type) {
+        setSelectedItem(null)
       }
     },
     [step.id, selectedItem, onStepContentChange],
@@ -240,15 +216,16 @@ export default function StepContent({
   const handleContextMenu = useCallback((e: React.MouseEvent, item: CanvasItemIdentifier) => {
     e.preventDefault();
 
-    const source = item.type === "media" ? step.media : step.elements;
+    const collectionKey = COLLECTION_MAP[item.type];
+    const source = step[collectionKey];
     const current = source.find(i => i.id === item.id);
 
     const z = current?.z ?? (item.type === "element" ? 1 : 0);
 
-    const allZ = [...step.media, ...step.elements].map(i => i.z ?? (i.type === "element" ? 1 : 0));
+    const allZ = [...step.media, ...step.elements, ...step.logics].map(i => i.z ?? (i.type === "element" ? 1 : 0));
     const maxZ = Math.max(...allZ);
 
-    const itemsAtMaxZ = [...step.media, ...step.elements].filter(i =>
+    const itemsAtMaxZ = [...step.media, ...step.elements, ...step.logics].filter(i =>
       (i.z ?? (i.type === "element" ? 1 : 0)) === maxZ
     ).length;
 
@@ -256,7 +233,7 @@ export default function StepContent({
 
     setContextMenu({ x: e.clientX, y: e.clientY, item, z, maxZ, canBringToFront })
     setSelectedItem(item)
-  }, [step.media, step.elements])
+  }, [step])
 
   const toggleResizeMode = useCallback((itemId: string, mode: "scale" | "resize") => {
     setResizeMode((prev) => ({
@@ -380,14 +357,13 @@ export default function StepContent({
   .map((logic) => {
     const itemIdentifier: CanvasItemIdentifier = { id: logic.id, type: "logic" }
 
-    // Optioneel: kies component op type
     switch (logic.type) {
       case "TRIGGER":
         return (
           <TriggerItem
             key={logic.id}
             id={logic.id}
-            subtype={logic.subtype}
+            subtype={logic.subtype ?? undefined}
             x={logic.x}
             y={logic.y}
             width={logic.width ?? 150}
@@ -452,9 +428,11 @@ export default function StepContent({
           x={contextMenu.x}
           y={contextMenu.y}
           z={
-            contextMenu.item.type === "element"
-              ? step.elements.find(el => el.id === contextMenu.item.id)?.z ?? 1
-              : step.media.find(m => m.id === contextMenu.item.id)?.z ?? 0
+            (() => {
+              const collectionKey = COLLECTION_MAP[contextMenu.item.type];
+              const item = step[collectionKey].find(i => i.id === contextMenu.item.id);
+              return item?.z ?? (contextMenu.item.type === "element" ? 1 : 0);
+            })()
           }
           maxZ={contextMenu.maxZ}
           canBringToFront={contextMenu.canBringToFront}

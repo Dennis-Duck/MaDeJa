@@ -24,6 +24,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       include: { 
         media: true,
         elements: true,
+        logics: true,
       },
     });
 
@@ -49,6 +50,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         include: { 
           media: true,
           elements: true,
+          logics: true,
       },
       });
       steps.push(nextStep);

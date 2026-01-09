@@ -40,7 +40,7 @@ export function TriggerItem({
 }: TriggerItemProps) {
   return (
     <div
-      id={`trigger-${id}`}
+      id={`logic-${id}`}
       className="absolute"
       style={{
         left: x,

@@ -38,7 +38,7 @@ export function JumpItem({
 }: JumpItemProps) {
   return (
     <div
-      id={`jump-${id}`}
+      id={`logic-${id}`}
       className="absolute"
       style={{
         left: x,

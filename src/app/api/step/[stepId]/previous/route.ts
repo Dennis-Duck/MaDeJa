@@ -23,6 +23,7 @@ export async function POST(req: Request, context: RouteContext) {
       include: { 
         media: true,
         elements: true,
+        logics: true,
       },
     });
 

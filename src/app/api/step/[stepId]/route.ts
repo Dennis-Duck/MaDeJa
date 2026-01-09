@@ -19,6 +19,7 @@ export async function GET(req: Request, context: RouteContext) {
       include: { 
         media: true,
         elements: true,
+        logics: true,
       },
     });
 
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest) {
       include: { 
         media: true,
         elements: true,
+        logics: true,
       },
     });
 
@@ -106,6 +108,7 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
       include: { 
         media: true,
         elements: true,
+        logics: true,
       },
     });
 

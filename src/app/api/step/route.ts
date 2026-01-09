@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     include: { 
       media: true,
       elements: true,
+      logics: true,
     },
   });
 
