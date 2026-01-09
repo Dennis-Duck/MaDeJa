@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useRef, useEffect, useCallback } from "react"
 import type { Step } from "@/types/step"
+import type { Flirt } from "@/types/flirt"
 import { Canvas } from "./canvas/canvas"
 import { MediaItem } from "./canvas/elements/media"
 import { ContextMenu } from "./canvas/context-menu"
@@ -34,6 +35,7 @@ interface CanvasItemIdentifier {
 interface StepContentProps {
   step: Step
   totalSteps: number
+  flirt?: Flirt;
   onStepContentChange?: () => void
   initialFlirtId?: string
 }
@@ -41,6 +43,7 @@ interface StepContentProps {
 export default function StepContent({
   step: initialStep,
   totalSteps,
+  flirt,
   onStepContentChange,
   initialFlirtId,
 }: StepContentProps) {
@@ -424,6 +427,7 @@ export default function StepContent({
       <InspectorsOverlay
         selectedItem={selectedItem}
         step={step}
+        flirt={flirt}
         onStepContentChange={onStepContentChange}
       />
 

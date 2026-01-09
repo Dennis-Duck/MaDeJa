@@ -6,6 +6,7 @@ import { LogicInspector } from './logics/logic-inspector';
 import { VariableInspector } from './variables/variabele-inspector';
 import { ElementInspector } from './elements/element-inspector';
 import { Step } from "@/types/step";
+import { Flirt } from "@/types/flirt";
 
 interface SelectedItem {
   id: string;
@@ -22,6 +23,7 @@ interface CanvasItemIdentifier {
 interface InspectorsOverlayProps {
   selectedItem: CanvasItemIdentifier | null;
   step?: Step;
+  flirt?: Flirt;
   onStepContentChange?: () => void;
 }
 
@@ -50,7 +52,7 @@ function mapSelectedItem(item: CanvasItemIdentifier | null): SelectedItem | null
   return { id: item.id, type, subtype };
 }
 
-export function InspectorsOverlay({ selectedItem, step, onStepContentChange }: InspectorsOverlayProps) {
+export function InspectorsOverlay({ selectedItem, step, flirt, onStepContentChange }: InspectorsOverlayProps) {
   const [logicPos, setLogicPos] = useState({ x: 1100, y: 50, width: 350, height: 400 });
   const [variablePos, setVariablePos] = useState({ x: 700, y: 500, width: 300, height: 400 });
   const [elementPos, setElementPos] = useState({ x: 200, y: 200, width: 320, height: 400 });
@@ -74,6 +76,7 @@ export function InspectorsOverlay({ selectedItem, step, onStepContentChange }: I
             logicId={mappedItem.id}
             subtype={mappedItem.subtype}
             step={step}
+            flirt={flirt}
             onUpdateStep={() => {
               if (!step) return;
               onStepContentChange?.();

@@ -3,13 +3,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-
-interface Flirt {
-  id: string;
-  title: string;
-  author: { email: string };
-  steps: { id: string; order: number }[];
-}
+import { Flirt } from "@/types/flirt";
 
 export default function FlirtsList({ initialFlirts }: { initialFlirts: Flirt[] }) {
   const [flirts, setFlirts] = useState(initialFlirts);

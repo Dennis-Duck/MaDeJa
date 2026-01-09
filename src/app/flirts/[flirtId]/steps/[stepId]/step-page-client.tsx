@@ -6,19 +6,22 @@ import { useStepEditor } from "@/app/hooks/use-step-editor";
 
 import StepEditorLayout from "@/components/editor/step-editor-layout";
 import StepSidebar from "@/components/editor/step-sidebar";
-import StepMediaManager from "@/components/editor/step-content";
+import StepContent from "@/components/editor/step-content";
 import StepNavigationFooter from "@/components/editor/step-navigation-footer";
+import { Flirt } from "@/types/flirt";
 
 interface StepPageClientProps {
   initialFlirtId: string;
   initialStep: Step;
   totalSteps: number;
+  flirt?: Flirt;
 }
 
 export default function StepPageClient({
   initialFlirtId,
   initialStep,
   totalSteps,
+  flirt,
 }: StepPageClientProps) {
   const router = useRouter();
 
@@ -51,9 +54,10 @@ export default function StepPageClient({
         />
       }
       content={
-        <StepMediaManager
+        <StepContent
           step={step}
           totalSteps={totalStepsState}
+          flirt={flirt}
           onStepContentChange={() => fetchStep(step.id)}
         />
       }
