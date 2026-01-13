@@ -158,28 +158,48 @@ export default function StepPreview({ step, flirtId, stepId }: StepPreviewProps)
 
               switch (el.type) {
                 case "BUTTON":
+
+                  const buttonFontSize = `${Math.min(
+                    ((el.width ?? 200) / CANVAS_WIDTH) * scaledWidth / 10,
+                    ((el.height ?? 60) / CANVAS_HEIGHT) * scaledHeight / 3
+                  )}px`;
                   return (
                     <button
                       key={el.id}
-                      className="absolute px-3 py-1 rounded bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] transition-colors duration-150 cursor-pointer active:scale-95"
+                      className="font-semibold rounded shadow-lg absolute bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] transition-colors duration-150 cursor-pointer active:scale-95 flex items-center justify-center"
                       style={{
                         left: `${leftPercent}%`,
                         top: `${topPercent}%`,
                         width: `${widthPercent}%`,
                         height: `${heightPercent}%`,
                         zIndex: el.z ?? 0,
-                        fontSize: "clamp(0.75rem, 2vw, 1rem)",
+                        fontSize: buttonFontSize,
                       }}
                     >
                       {el.text ?? "Button"}
                     </button>
                   )
-
-                // Voeg hier toekomstige element types toe:
-                // case "TEXT":
-                //   return <div key={el.id}>...</div>
-                // case "TIMER":
-                //   return <div key={el.id}>...</div>
+                case "TEXT":
+                  const textFontSize = `${Math.min(
+                    ((el.width ?? 300) / CANVAS_WIDTH) * scaledWidth / 10,
+                    ((el.height ?? 80) / CANVAS_HEIGHT) * scaledHeight / 3
+                  )}px`;
+                  return (
+                    <div
+                      key={el.id}
+                      className="absolute w-full h-full text-[var(--foreground)] bg-[var(--hover-border)] overflow-hidden flex items-center justify-center text-center rounded shadow-lg"
+                      style={{
+                        left: `${leftPercent}%`,
+                        top: `${topPercent}%`,
+                        width: `${widthPercent}%`,
+                        height: `${heightPercent}%`,
+                        zIndex: el.z ?? 0,
+                        fontSize: textFontSize,
+                      }}
+                    >
+                      {el.text ?? "Text"}
+                    </div>
+                  )
 
                 default:
                   return null
@@ -209,13 +229,6 @@ export default function StepPreview({ step, flirtId, stepId }: StepPreviewProps)
           </div>
         </div>
       </div>
-      <button
-        onClick={() => router.push(`/flirts/${flirtId}/steps/${stepId}`)}
-        className="px-4 py-2 rounded-lg font-medium bg-[var(--background-secondary)] border border-[var(--border)] hover:bg-[var(--hover-bg)]"
-      >
-        ← Back to editor
-      </button>
-
     </div>
   )
 }

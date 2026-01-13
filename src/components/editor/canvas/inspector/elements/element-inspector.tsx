@@ -2,6 +2,7 @@
 
 import { Step } from "@/types/step";
 import { ButtonInspector } from "./button-inspector";
+import { TextInspector } from "./text-inspector";
 
 interface ElementInspectorProps {
   elementId?: string;
@@ -18,6 +19,14 @@ export function ElementInspector({ elementId, subtype, step, onUpdateStep }: Ele
       {(!subtype || subtype === "BUTTON") && (
         <ButtonInspector
           buttonId={elementId}
+          step={step}
+          onUpdateStep={onUpdateStep}
+        />
+      )}
+
+       {(!subtype || subtype === "TEXT") && (
+        <TextInspector
+          textId={elementId}
           step={step}
           onUpdateStep={onUpdateStep}
         />

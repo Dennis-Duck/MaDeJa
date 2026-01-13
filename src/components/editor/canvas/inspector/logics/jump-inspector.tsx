@@ -20,7 +20,7 @@ export function JumpInspector({
   if (!logicId || !step) return null;
 
   const [parentLogicId, setParentLogicId] = useState<string>("");
-  const [targetStepId, setTargetStepId] = useState<string>("");
+  const [targetStepOrder, setTargetStepOrder] = useState<string>("");
 
   const parentCandidates = step.logics.filter(
     (l) => l.id !== logicId && l.type !== "JUMP"
@@ -37,7 +37,9 @@ export function JumpInspector({
     if (currentLogic.config) {
       try {
         const cfg = JSON.parse(currentLogic.config);
-        if (cfg.targetStepId) setTargetStepId(cfg.targetStepId);
+        if (cfg.targetStepOrder !== undefined) {
+          setTargetStepOrder(String(cfg.targetStepOrder));
+        }
       } catch {
         // ignore malformed JSON
       }
@@ -50,7 +52,7 @@ export function JumpInspector({
     const parentLogic = step.logics.find((l) => l.id === parentLogicId);
     if (!parentLogic) return;
 
-    const config = JSON.stringify({ targetStepId });
+    const config = JSON.stringify({ targetStepOrder: Number(targetStepOrder) });
 
     const res = await fetch(`/api/step/${step.id}/logics/${logicId}`, {
       method: "PATCH",
@@ -92,13 +94,13 @@ export function JumpInspector({
       {/* Target step */}
       <label className="block text-foreground-muted mb-1 mt-2">Jump to Step</label>
       <select
-        value={targetStepId}
-        onChange={(e) => setTargetStepId(e.target.value)}
+        value={targetStepOrder}
+        onChange={(e) => setTargetStepOrder(e.target.value)}
         className="w-full p-2 rounded border bg-[var(--background-secondary)] text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
       >
         <option value="">Select a step</option>
         {flirt?.steps.map((s) => (
-          <option key={s.id} value={s.id}>
+          <option key={s.id} value={s.order}>
             {s.order}
           </option>
         ))}

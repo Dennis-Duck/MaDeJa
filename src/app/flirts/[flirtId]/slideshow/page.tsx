@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import type { Media } from "@/types/media"
 import type { Element } from "@/types/element"
+import type { Logic } from "@/types/logic"
 
 export default async function Page({
   params,
@@ -19,6 +20,7 @@ export default async function Page({
         include: {
           media: true,
           elements: true,
+          logics: true,
         },
       },
     },
@@ -27,6 +29,7 @@ export default async function Page({
   if (!flirt) notFound()
 
   const steps = flirt.steps.map((step) => ({
+    order: step.order,
     media: step.media.map((m): Media => ({
       id: m.id,
       url: m.url,
@@ -46,6 +49,20 @@ export default async function Page({
       z: el.z ?? 0,
       width: el.width ?? undefined,
       height: el.height ?? undefined,
+    })),
+    logics: step.logics.map((l): Logic => ({
+      id: l.id,
+      stepId: l.stepId,
+      type: l.type,
+      subtype: l.subtype,
+      config: l.config,
+      parentId: l.parentId,
+      parentType: l.parentType,
+      x: l.x,
+      y: l.y,
+      z: l.z,
+      width: l.width ?? undefined,
+      height: l.height ?? undefined,
     })),
   }))
 

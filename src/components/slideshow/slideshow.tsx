@@ -6,13 +6,17 @@ import { useState, useRef, useEffect } from "react"
 import type { Media } from "@/types/media"
 import type { Element } from "@/types/element"
 import Image from "next/image"
+import type { Logic } from "@/types/logic"
 
 const CANVAS_WIDTH = 1920
 const CANVAS_HEIGHT = 1080
 
 interface SlideshowStep {
+  id?: string;
+  order?: number;
   media: Media[]
   elements: Element[]
+  logics?: Logic[]
 }
 
 interface SlideshowProps {
@@ -57,7 +61,7 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
       if (!containerRef.current) return
       const containerWidth = containerRef.current.offsetWidth
       const containerHeight = containerRef.current.offsetHeight
-      const availableHeight = Math.max(containerHeight - effectiveTopStrip, 0) 
+      const availableHeight = Math.max(containerHeight - effectiveTopStrip, 0)
       const scaleX = containerWidth / CANVAS_WIDTH
       const scaleY = availableHeight / CANVAS_HEIGHT
       setScale(Math.min(scaleX, scaleY))
@@ -79,6 +83,65 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
     const endX = e.changedTouches[0].clientX
     if (startX.current - endX > 50) nextSlide()
     else if (endX - startX.current > 50) prevSlide()
+  }
+
+  useEffect(() => {
+    const step = steps[current]
+    if (!step?.logics) return
+
+    const stepLoadTriggers = step.logics.filter(
+      (l: Logic) => l.type === "TRIGGER" && l.subtype === "STEP_LOAD"
+    )
+
+    stepLoadTriggers.forEach((trigger: Logic) => {
+      executeLogicChain(trigger.id)
+    })
+  }, [current])
+
+  const handleButtonClick = (buttonId: string) => {
+    const step = steps[current]
+    if (!step?.logics) return
+
+    const triggers = step.logics.filter(
+      (l: Logic) =>
+        l.type === "TRIGGER" &&
+        l.subtype === "BUTTON_CLICK" &&
+        l.parentId === buttonId
+    )
+
+    triggers.forEach((trigger: Logic) => {
+      executeLogicChain(trigger.id)
+    })
+  }
+
+  const executeLogicChain = (triggerLogicId: string) => {
+    const step = steps[current]
+    if (!step?.logics) return
+
+    const jumps = step.logics.filter(
+      (l: Logic) =>
+        l.type === "JUMP" &&
+        l.parentId === triggerLogicId
+    )
+
+    jumps.forEach((jump: Logic) => {
+      if (!jump.config) return
+
+      try {
+        const cfg = JSON.parse(jump.config)
+        if (cfg.targetStepOrder === undefined) return
+
+        const targetIndex = steps.findIndex(
+          (s) => s.order === cfg.targetStepOrder
+        )
+
+        if (targetIndex !== -1) {
+          setCurrent(targetIndex)
+        }
+      } catch {
+        console.warn("Invalid jump config", jump.id)
+      }
+    })
   }
 
   if (steps.length === 0) {
@@ -178,21 +241,67 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
               {step.elements
                 .filter((el) => el.type === "BUTTON")
                 .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
-                .map((el) => (
-                  <button
-                    key={el.id}
-                    className="absolute px-3 py-1 rounded bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] transition-colors duration-150 cursor-pointer active:scale-95"
-                    style={{
-                      left: `${((el.x ?? 0) / CANVAS_WIDTH) * 100}%`,
-                      top: `${((el.y ?? 0) / CANVAS_HEIGHT) * 100}%`,
-                      width: `${((el.width ?? 200) / CANVAS_WIDTH) * 100}%`,
-                      height: `${((el.height ?? 50) / CANVAS_HEIGHT) * 100}%`,
-                      zIndex: el.z ?? 0,
-                    }}
-                  >
-                    {el.text ?? "Button"}
-                  </button>
-                ))}
+                .map((el) => {
+
+                  const fontSize = `${Math.min(
+                    ((el.width ?? 200) / CANVAS_WIDTH) * scaledWidth / 10,
+                    ((el.height ?? 50) / CANVAS_HEIGHT) * scaledHeight / 3
+                  )}px`;
+                  
+                  return (
+
+                    <button
+                      key={el.id}
+                      onClick={() => handleButtonClick(el.id)}
+                      className="font-semibold rounded shadow-lg absolute bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] transition-colors duration-150 cursor-pointer active:scale-95 flex items-center justify-center"
+                      style={{
+                        left: `${((el.x ?? 0) / CANVAS_WIDTH) * 100}%`,
+                        top: `${((el.y ?? 0) / CANVAS_HEIGHT) * 100}%`,
+                        width: `${((el.width ?? 200) / CANVAS_WIDTH) * 100}%`,
+                        height: `${((el.height ?? 50) / CANVAS_HEIGHT) * 100}%`,
+                        zIndex: el.z ?? 0,
+                        fontSize: `${Math.min(
+                          ((el.width ?? 300) / CANVAS_WIDTH) * scaledWidth / 10,
+                          ((el.height ?? 80) / CANVAS_HEIGHT) * scaledHeight / 3
+                        )}px`,
+                        padding: 0,
+                      }}
+                    >
+                      {el.text ?? "Button"}
+                    </button>
+                  )
+                })}
+              {/* ELEMENT TEXT */}
+              {step.elements
+                .filter((el) => el.type === "TEXT")
+                .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
+                .map((el) => {
+
+                  const fontSize = `${Math.min(
+                    ((el.width ?? 300) / CANVAS_WIDTH) * scaledWidth / 10,
+                    ((el.height ?? 80) / CANVAS_HEIGHT) * scaledHeight / 3
+                  )}px`;
+
+                  return (
+                    <div
+                      key={el.id}
+                      className="absolute w-full h-full text-[var(--foreground)] bg-[var(--hover-border)] overflow-hidden flex items-center justify-center text-center rounded shadow-lg"
+                      style={{
+                        left: `${((el.x ?? 0) / CANVAS_WIDTH) * 100}%`,
+                        top: `${((el.y ?? 0) / CANVAS_HEIGHT) * 100}%`,
+                        width: `${((el.width ?? 300) / CANVAS_WIDTH) * 100}%`,
+                        height: `${((el.height ?? 80) / CANVAS_HEIGHT) * 100}%`,
+                        zIndex: el.z ?? 0,
+                        fontSize: `${Math.min(
+                          ((el.width ?? 300) / CANVAS_WIDTH) * scaledWidth / 10,
+                          ((el.height ?? 80) / CANVAS_HEIGHT) * scaledHeight / 3
+                        )}px`
+                      }}
+                    >
+                      {el.text ?? "Text"}
+                    </div>
+                  )
+                })}
             </div>
           ))}
 

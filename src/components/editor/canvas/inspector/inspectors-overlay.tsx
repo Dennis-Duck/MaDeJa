@@ -113,6 +113,7 @@ export function InspectorsOverlay({ selectedItem, step, flirt, onStepContentChan
         >
           <ElementInspector
             elementId={mappedItem.id}
+            subtype={mappedItem.subtype}
             step={step}
             onUpdateStep={() => {
               if (!step) return;

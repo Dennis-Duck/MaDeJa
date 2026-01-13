@@ -14,6 +14,7 @@ import { ButtonItem } from "./canvas/elements/button"
 import { TriggerItem } from "./canvas/logics/trigger"
 import { JumpItem } from "./canvas/logics/jump"
 import { InspectorsOverlay } from "./canvas/inspector/inspectors-overlay"
+import { TextItem } from "./canvas/elements/text"
 
 const CANVAS_WIDTH = 1920
 const CANVAS_HEIGHT = 1080
@@ -348,6 +349,44 @@ export default function StepContent({
                     onDelete={() => handleDelete(itemIdentifier)}
                     onResizeStart={(e, handle) =>
                       startResize(e, el.id, "element", handle, el.width ?? 200, el.height ?? 60, el.x, el.y)
+                    }
+                  />
+                )
+
+              case "TEXT":
+                return (
+                  <TextItem
+                    key={el.id}
+                    id={el.id}
+                    x={el.x}
+                    y={el.y}
+                    width={el.width ?? 300}
+                    height={el.height ?? 80}
+                    z={el.z ?? 0}
+                    text={el.text ?? "Text"}
+                    isSelected={selectedItem?.id === el.id && selectedItem?.type === "element"}
+                    isDragging={draggedItem === el.id}
+                    resizeMode={resizeMode[el.id]}
+                    onMouseDown={(e) => {
+                      startDrag(e, el.id, "element", el.x, el.y)
+                      setSelectedItem(itemIdentifier)
+                    }}
+                    onClick={() => {
+                      setSelectedItem(itemIdentifier)
+                    }}
+                    onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
+                    onDelete={() => handleDelete(itemIdentifier)}
+                    onResizeStart={(e, handle) =>
+                      startResize(
+                        e,
+                        el.id,
+                        "element",
+                        handle,
+                        el.width ?? 300,
+                        el.height ?? 80,
+                        el.x,
+                        el.y
+                      )
                     }
                   />
                 )
