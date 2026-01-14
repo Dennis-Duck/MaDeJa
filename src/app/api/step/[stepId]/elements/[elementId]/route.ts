@@ -23,6 +23,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Element not found for this step" }, { status: 404 });
     }
 
+    // TextSegments worden automatisch verwijderd door onDelete: Cascade
     await prisma.element.delete({ where: { id: elementId } });
 
     return NextResponse.json({ ok: true });
@@ -39,7 +40,7 @@ export async function PATCH(
   const { stepId, elementId } = await params;
   const body = await req.json();
 
-  const { x, y, z, width, height, text } = body;
+  const { x, y, z, width, height, text, autoAdvance, autoAdvanceDelay } = body;
 
   try {
     const element = await prisma.element.findUnique({ where: { id: elementId } });
@@ -48,10 +49,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Element not found for this step" }, { status: 404 });
     }
 
-    const safeZ =
-      z !== undefined
-        ? Math.max(1, z)
-        : undefined;
+    const safeZ = z !== undefined ? Math.max(1, z) : undefined;
 
     const updated = await prisma.element.update({
       where: { id: elementId },
@@ -61,8 +59,15 @@ export async function PATCH(
         ...(z !== undefined && { z: safeZ }),
         ...(width !== undefined && { width }),
         ...(height !== undefined && { height }),
-        ...(text !== undefined && { text }),
+        ...(text !== undefined && { text }), // Legacy support
+        ...(autoAdvance !== undefined && { autoAdvance }),
+        ...(autoAdvanceDelay !== undefined && { autoAdvanceDelay }),
       },
+      include: {
+        textSegments: {
+          orderBy: { order: 'asc' }
+        }
+      }
     });
 
     return NextResponse.json({ ok: true, element: updated });

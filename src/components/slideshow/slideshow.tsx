@@ -7,6 +7,7 @@ import type { Media } from "@/types/media"
 import type { Element } from "@/types/element"
 import Image from "next/image"
 import type { Logic } from "@/types/logic"
+import { TextItem } from "../editor/canvas/elements/text"
 
 const CANVAS_WIDTH = 1920
 const CANVAS_HEIGHT = 1080
@@ -247,7 +248,7 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
                     ((el.width ?? 200) / CANVAS_WIDTH) * scaledWidth / 10,
                     ((el.height ?? 50) / CANVAS_HEIGHT) * scaledHeight / 3
                   )}px`;
-                  
+
                   return (
 
                     <button
@@ -271,6 +272,7 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
                     </button>
                   )
                 })}
+                
               {/* ELEMENT TEXT */}
               {step.elements
                 .filter((el) => el.type === "TEXT")
@@ -283,23 +285,21 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
                   )}px`;
 
                   return (
-                    <div
+                    <TextItem
                       key={el.id}
-                      className="absolute w-full h-full text-[var(--foreground)] bg-[var(--hover-border)] overflow-hidden flex items-center justify-center text-center rounded shadow-lg"
-                      style={{
-                        left: `${((el.x ?? 0) / CANVAS_WIDTH) * 100}%`,
-                        top: `${((el.y ?? 0) / CANVAS_HEIGHT) * 100}%`,
-                        width: `${((el.width ?? 300) / CANVAS_WIDTH) * 100}%`,
-                        height: `${((el.height ?? 80) / CANVAS_HEIGHT) * 100}%`,
-                        zIndex: el.z ?? 0,
-                        fontSize: `${Math.min(
-                          ((el.width ?? 300) / CANVAS_WIDTH) * scaledWidth / 10,
-                          ((el.height ?? 80) / CANVAS_HEIGHT) * scaledHeight / 3
-                        )}px`
-                      }}
-                    >
-                      {el.text ?? "Text"}
-                    </div>
+                      id={el.id}
+                      x={(el.x / CANVAS_WIDTH) * scaledWidth}
+                      y={(el.y / CANVAS_HEIGHT) * scaledHeight}
+                      width={((el.width ?? 300) / CANVAS_WIDTH) * scaledWidth}
+                      height={((el.height ?? 80) / CANVAS_HEIGHT) * scaledHeight}
+                      z={el.z ?? 0}
+                      text={el.text ?? undefined}
+                      textSegments={el.textSegments}
+                      isSelected={false}
+                      isDragging={false}
+                      resizeMode={null}
+                      mode="preview"
+                    />
                   )
                 })}
             </div>

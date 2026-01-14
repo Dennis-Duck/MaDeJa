@@ -259,7 +259,17 @@ export default function StepContent({
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
         scale={scale}
-        onMouseMove={(e) => handleMove(e, contextMenu ? resizeMode[contextMenu.item.id] : null)}
+        onMouseMove={(e) => {
+          // Find the resizing item's current resizeMode
+          let currentResizeMode: "scale" | "resize" | null = null
+          for (const [itemId, mode] of Object.entries(resizeMode)) {
+            if (mode) {
+              currentResizeMode = mode
+              break
+            }
+          }
+          handleMove(e, currentResizeMode)
+        }}
         onMouseUp={endInteraction}
 
         onMouseDown={(e) => {
@@ -354,42 +364,44 @@ export default function StepContent({
                 )
 
               case "TEXT":
-                return (
-                  <TextItem
-                    key={el.id}
-                    id={el.id}
-                    x={el.x}
-                    y={el.y}
-                    width={el.width ?? 300}
-                    height={el.height ?? 80}
-                    z={el.z ?? 0}
-                    text={el.text ?? "Text"}
-                    isSelected={selectedItem?.id === el.id && selectedItem?.type === "element"}
-                    isDragging={draggedItem === el.id}
-                    resizeMode={resizeMode[el.id]}
-                    onMouseDown={(e) => {
-                      startDrag(e, el.id, "element", el.x, el.y)
-                      setSelectedItem(itemIdentifier)
-                    }}
-                    onClick={() => {
-                      setSelectedItem(itemIdentifier)
-                    }}
-                    onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
-                    onDelete={() => handleDelete(itemIdentifier)}
-                    onResizeStart={(e, handle) =>
-                      startResize(
-                        e,
-                        el.id,
-                        "element",
-                        handle,
-                        el.width ?? 300,
-                        el.height ?? 80,
-                        el.x,
-                        el.y
-                      )
-                    }
-                  />
-                )
+  return (
+    <TextItem
+      key={el.id}
+      id={el.id}
+      x={el.x}
+      y={el.y}
+      width={el.width ?? 300}
+      height={el.height ?? 80}
+      z={el.z ?? 0}
+      text={el.text ?? undefined}
+      textSegments={el.textSegments}
+      isSelected={selectedItem?.id === el.id && selectedItem?.type === "element"}
+      isDragging={draggedItem === el.id}
+      resizeMode={resizeMode[el.id]}
+      mode="editor"
+      onMouseDown={(e) => {
+        startDrag(e, el.id, "element", el.x, el.y)
+        setSelectedItem(itemIdentifier)
+      }}
+      onClick={() => {
+        setSelectedItem(itemIdentifier)
+      }}
+      onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
+      onDelete={() => handleDelete(itemIdentifier)}
+      onResizeStart={(e, handle) =>
+        startResize(
+          e,
+          el.id,
+          "element",
+          handle,
+          el.width ?? 300,
+          el.height ?? 80,
+          el.x,
+          el.y
+        )
+      }
+    />
+  )
 
               default:
                 return null

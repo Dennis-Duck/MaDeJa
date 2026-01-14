@@ -66,6 +66,19 @@ model Element {
   width     Float?
   height    Float?
   text      String?
+  textSegments TextSegment[]
+  autoAdvance       Boolean? @default(false)
+  autoAdvanceDelay  Int? 
+}
+
+model TextSegment {
+  id        String   @id @default(cuid())
+  elementId String
+  element   Element  @relation(fields: [elementId], references: [id], onDelete: Cascade)
+  order     Int      @default(0)
+  text      String  
+  
+  @@unique([elementId, order])
 }
 
 model Logic {

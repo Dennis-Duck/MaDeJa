@@ -20,7 +20,14 @@ export default async function Page({
     where: { id: stepId },
     include: {
       media: true,
-      elements: true,
+      logics: true,
+      elements: {
+          include: {
+            textSegments: {
+              orderBy: { order: 'asc' }
+            }
+          }
+        },
     },
   });
 

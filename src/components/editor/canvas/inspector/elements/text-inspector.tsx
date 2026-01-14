@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Step } from "@/types/step"
+import { TextSegment } from "@/types/text-segment"
 
 interface TextInspectorProps {
   textId?: string
@@ -16,48 +17,165 @@ export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps
     (el) => el.id === textId && el.type === "TEXT"
   )
 
-  const [text, setText] = useState(textElement?.text ?? "")
+  if (!textElement) return null
+
+  const [segments, setSegments] = useState<TextSegment[]>(textElement.textSegments || [])
+  const [newSegmentText, setNewSegmentText] = useState("")
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editText, setEditText] = useState("")
 
   useEffect(() => {
-    setText(textElement?.text ?? "")
-  }, [textElement?.text])
+    setSegments(textElement.textSegments || [])
+  }, [textElement.textSegments])
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setText(e.target.value)
-  }
+  const handleAddSegment = async () => {
+    if (!newSegmentText.trim()) return
 
-  const handleSave = async () => {
-    if (!textElement) return
-
-    const res = await fetch(`/api/step/${step.id}/elements/${textElement.id}`, {
-      method: "PATCH",
+    const res = await fetch(`/api/step/${step.id}/elements/${textElement.id}/segments`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text: newSegmentText }),
     })
 
     if (res.ok) {
+      const { segment } = await res.json()
+      setSegments([...segments, segment])
+      setNewSegmentText("")
       onUpdateStep?.()
     }
   }
 
+  const handleUpdateSegment = async (segmentId: string) => {
+    if (!editText.trim()) return
+
+    const res = await fetch(`/api/step/${step.id}/elements/${textElement.id}/segments/${segmentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: editText }),
+    })
+
+    if (res.ok) {
+      const { segment } = await res.json()
+      setSegments(segments.map(s => s.id === segmentId ? segment : s))
+      setEditingId(null)
+      setEditText("")
+      onUpdateStep?.()
+    }
+  }
+
+  const handleDeleteSegment = async (segmentId: string) => {
+    const res = await fetch(`/api/step/${step.id}/elements/${textElement.id}/segments/${segmentId}`, {
+      method: "DELETE",
+    })
+
+    if (res.ok) {
+      setSegments(segments.filter(s => s.id !== segmentId))
+      onUpdateStep?.()
+    }
+  }
+
+  const startEdit = (segment: TextSegment) => {
+    setEditingId(segment.id)
+    setEditText(segment.text)
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditText("")
+  }
+
   return (
-    <div className="bg-background flex flex-col gap-2 p-4 rounded shadow">
-      <h2 className="text-lg font-semibold">Text Inspector</h2>
+    <div className="bg-background flex flex-col gap-4 p-4 rounded shadow max-h-[80vh] overflow-hidden">
+      <h2 className="text-lg font-semibold">Text Segments</h2>
 
-      <label className="block text-foreground-muted">Text content</label>
-      <input
-        type="text"
-        value={text}
-        onChange={handleTextChange}
-        className="w-full p-2 rounded border bg-[var(--background-secondary)] text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-      />
+      {/* Segments lijst - scrollbaar */}
+      <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-2">
+        {segments.length === 0 && (
+          <p className="text-foreground-muted text-sm italic">
+            No text segments yet. Add one!
+          </p>
+        )}
 
-      <button
-        onClick={handleSave}
-        className="py-2 px-4 rounded bg-[var(--accent)] text-[var(--foreground)] hover:bg-[var(--hover-bg)]"
-      >
-        Save
-      </button>
+        {segments.map((segment, index) => (
+          <div
+            key={segment.id}
+            className="bg-[var(--background-secondary)] p-3 rounded border border-[var(--hover-border)] flex flex-col gap-2"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-foreground-muted font-mono">
+                Segment {index + 1}
+              </span>
+              <div className="flex gap-1">
+                {editingId === segment.id ? (
+                  <>
+                    <button
+                      onClick={() => handleUpdateSegment(segment.id)}
+                      className="text-xs px-2 py-1 rounded bg-[var(--accent)] text-[var(--foreground)] hover:bg-[var(--hover-bg)]"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="text-xs px-2 py-1 rounded bg-[var(--background)] text-[var(--foreground)] hover:bg-[var(--hover-bg)]"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => startEdit(segment)}
+                      className="text-xs px-2 py-1 rounded bg-[var(--background)] text-[var(--foreground)] hover:bg-[var(--hover-bg)]"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSegment(segment.id)}
+                      className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-500 hover:bg-red-500/30"
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {editingId === segment.id ? (
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                className="w-full p-2 rounded border bg-[var(--background)] text-foreground focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+                rows={3}
+              />
+            ) : (
+              <p className="text-foreground text-sm whitespace-pre-wrap">
+                {segment.text}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Add nieuwe segment */}
+      <div className="border-t border-[var(--hover-border)] pt-4 flex flex-col gap-2">
+        <label className="text-sm font-medium text-foreground">
+          Add new segment
+        </label>
+        <textarea
+          value={newSegmentText}
+          onChange={(e) => setNewSegmentText(e.target.value)}
+          placeholder="Type your text here…"
+          className="w-full p-2 rounded border bg-[var(--background-secondary)] text-foreground focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+          rows={3}
+        />
+        <button
+          onClick={handleAddSegment}
+          disabled={!newSegmentText.trim()}
+          className="py-2 px-4 rounded bg-[var(--accent)] text-[var(--foreground)] hover:bg-[var(--hover-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          + Add segment
+        </button>
+      </div>
     </div>
   )
 }

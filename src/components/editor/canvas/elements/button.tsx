@@ -41,7 +41,7 @@ export function ButtonItem({
   return (
     <div
       id={`element-${id}`}
-      className="absolute"
+      className="absolute rounded-lg shadow-lg"
       style={{
         left: x,
         top: y,

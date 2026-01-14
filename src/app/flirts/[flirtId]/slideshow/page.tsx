@@ -19,7 +19,13 @@ export default async function Page({
         orderBy: { order: "asc" },
         include: {
           media: true,
-          elements: true,
+          elements: {
+            include: {
+              textSegments: {
+                orderBy: { order: 'asc' }
+              }
+            },
+          },
           logics: true,
         },
       },
@@ -49,6 +55,12 @@ export default async function Page({
       z: el.z ?? 0,
       width: el.width ?? undefined,
       height: el.height ?? undefined,
+      textSegments: el.textSegments.map(seg => ({
+        id: seg.id,
+        elementId: seg.elementId,
+        text: seg.text,
+        order: seg.order,
+      })),
     })),
     logics: step.logics.map((l): Logic => ({
       id: l.id,

@@ -55,7 +55,7 @@ export default function FlirtsList({ initialFlirts }: { initialFlirts: Flirt[] }
 
               <button
                 onClick={() => handleDelete(flirt.id)}
-                className="px-3 py-1 rounded bg-red-500 text-white border border-red-700 hover:bg-red-600 transition-colors duration-150"
+                className="px-3 py-1 rounded border bg-red-500/20 text-red-500 hover:bg-red-500/30 transition-colors duration-150"
               >
                 Delete
               </button>

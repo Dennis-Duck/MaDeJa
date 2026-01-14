@@ -4,6 +4,7 @@ import type { Step } from "@/types/step"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useState, useRef, useEffect } from "react"
+import { TextItem } from "../editor/canvas/elements/text"
 
 interface StepPreviewProps {
   step: Step
@@ -180,25 +181,22 @@ export default function StepPreview({ step, flirtId, stepId }: StepPreviewProps)
                     </button>
                   )
                 case "TEXT":
-                  const textFontSize = `${Math.min(
-                    ((el.width ?? 300) / CANVAS_WIDTH) * scaledWidth / 10,
-                    ((el.height ?? 80) / CANVAS_HEIGHT) * scaledHeight / 3
-                  )}px`;
                   return (
-                    <div
+                    <TextItem
                       key={el.id}
-                      className="absolute w-full h-full text-[var(--foreground)] bg-[var(--hover-border)] overflow-hidden flex items-center justify-center text-center rounded shadow-lg"
-                      style={{
-                        left: `${leftPercent}%`,
-                        top: `${topPercent}%`,
-                        width: `${widthPercent}%`,
-                        height: `${heightPercent}%`,
-                        zIndex: el.z ?? 0,
-                        fontSize: textFontSize,
-                      }}
-                    >
-                      {el.text ?? "Text"}
-                    </div>
+                      id={el.id}
+                      x={(el.x / CANVAS_WIDTH) * scaledWidth}
+                      y={(el.y / CANVAS_HEIGHT) * scaledHeight}
+                      width={((el.width ?? 300) / CANVAS_WIDTH) * scaledWidth}
+                      height={((el.height ?? 80) / CANVAS_HEIGHT) * scaledHeight}
+                      z={el.z ?? 0}
+                      text={el.text ?? undefined}
+                      textSegments={el.textSegments}
+                      isSelected={false}
+                      isDragging={false}
+                      resizeMode={null}
+                      mode="preview"
+                    />
                   )
 
                 default:

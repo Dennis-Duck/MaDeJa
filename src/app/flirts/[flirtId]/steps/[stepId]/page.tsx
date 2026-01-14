@@ -20,7 +20,13 @@ export default async function Page({
       steps: {
         include: {
           media: true,
-          elements: true,
+          elements: {
+            include: {
+              textSegments: {
+                orderBy: { order: 'asc' }
+              }
+            },
+          },
           logics: true,
         },
         orderBy: { order: "asc" },

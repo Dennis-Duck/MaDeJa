@@ -42,7 +42,7 @@ export function TriggerItem({
   return (
     <div
       id={`logic-${id}`}
-      className="absolute"
+      className="absolute rounded-lg shadow-lg"
       style={{
         left: x,
         top: y,

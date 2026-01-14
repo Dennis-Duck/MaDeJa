@@ -45,6 +45,7 @@ export function ButtonInspector({ buttonId, step, onUpdateStep }: ButtonInspecto
       <input
         type="text"
         value={text}
+        placeholder="Type your text here…"
         onChange={handleTextChange}
         className="w-full p-2 rounded border bg-[var(--background-secondary)] text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
       />

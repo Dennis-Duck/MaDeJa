@@ -15,6 +15,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
   try {
     const element = await prisma.element.create({
       data: { stepId, type, x, y, z, width, height, text },
+      include: {
+        textSegments: {
+          orderBy: { order: 'asc' }
+        }
+      }
     });
     return NextResponse.json({ ok: true, element });
   } catch (err) {

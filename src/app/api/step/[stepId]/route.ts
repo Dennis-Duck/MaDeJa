@@ -18,7 +18,13 @@ export async function GET(req: Request, context: RouteContext) {
       where: { id: stepId },
       include: { 
         media: true,
-        elements: true,
+        elements: {
+          include: {
+            textSegments: {
+              orderBy: { order: 'asc' }
+            }
+          }
+        },
         logics: true,
       },
     });
@@ -58,7 +64,13 @@ export async function POST(req: NextRequest) {
       },
       include: { 
         media: true,
-        elements: true,
+        elements: {
+          include: {
+            textSegments: {
+              orderBy: { order: 'asc' }
+            }
+          }
+        },
         logics: true,
       },
     });
