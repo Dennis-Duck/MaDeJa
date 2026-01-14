@@ -176,6 +176,45 @@ export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps
           + Add segment
         </button>
       </div>
+
+      <div className="border-t border-[var(--hover-border)] pt-4 flex flex-col gap-4">
+        <h3 className="text-md font-semibold">Auto Advance Settings</h3>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-foreground">Enable Auto Advance</label>
+          <input
+            type="checkbox"
+            checked={textElement.autoAdvance || false}
+            onChange={async (e) => {
+              const res = await fetch(`/api/step/${step.id}/elements/${textElement.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ autoAdvance: e.target.checked }),
+              })
+              if (res.ok) onUpdateStep?.()
+            }}
+          />
+        </div>
+
+        {textElement.autoAdvance && (
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-foreground">Delay (seconds)</label>
+            <input
+              type="number"
+              min={1}
+              value={textElement.autoAdvanceDelay || 3}
+              onChange={async (e) => {
+                const res = await fetch(`/api/step/${step.id}/elements/${textElement.id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ autoAdvanceDelay: parseInt(e.target.value) }),
+                })
+                if (res.ok) onUpdateStep?.()
+              }}
+              className="w-16 p-1 rounded border bg-[var(--background-secondary)] text-foreground"
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

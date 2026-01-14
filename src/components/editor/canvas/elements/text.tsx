@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useRef, useEffect } from "react"
@@ -19,6 +18,8 @@ interface TextItemProps {
   isDragging: boolean
   resizeMode: "scale" | "resize" | null
   mode: "editor" | "preview"
+  autoAdvance?: boolean
+  autoAdvanceDelay?: number
   onMouseDown?: (e: React.MouseEvent) => void
   onClick?: (e: React.MouseEvent) => void
   onContextMenu?: (e: React.MouseEvent) => void
@@ -39,6 +40,8 @@ export function TextItem({
   isDragging,
   resizeMode,
   mode,
+  autoAdvance = false,
+  autoAdvanceDelay = 3,
   onMouseDown,
   onClick,
   onContextMenu,
@@ -63,26 +66,37 @@ export function TextItem({
   const isPreviewMode = mode === "preview"
   const canAdvance = isPreviewMode && hasMultipleSegments && currentSegmentIndex < segments.length - 1
 
-  const handleNextSegment = (e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleNextSegment = () => {
     if (currentSegmentIndex < segments.length - 1) {
       setCurrentSegmentIndex(prev => prev + 1)
     }
   }
 
-  // Bereken spacerHeight op basis van container en actieve tekst
   useEffect(() => {
-    if (!isPreviewMode || !containerRef.current || !activeTextRef.current) return
+    if (!isPreviewMode || !autoAdvance || !canAdvance) return
 
-    const containerHeight = containerRef.current.clientHeight
-    const textHeight = activeTextRef.current.clientHeight
+    const timer = setTimeout(() => {
+      handleNextSegment()
+    }, autoAdvanceDelay * 1000)
 
+    return () => clearTimeout(timer)
+  }, [currentSegmentIndex, isPreviewMode, autoAdvance, autoAdvanceDelay, canAdvance])
+
+  
+useEffect(() => {
+  if (!isPreviewMode || !containerRef.current || !activeTextRef.current) return
+
+  const raf = requestAnimationFrame(() => {
+    const containerHeight = containerRef.current!.clientHeight
+    const textHeight = activeTextRef.current!.clientHeight
     const space = Math.max((containerHeight - textHeight) / 2, 0)
-    setSpacerHeight(space > 4 ? space - 4 : space)
+    setSpacerHeight(space)
+  })
 
-  }, [currentSegmentIndex, mode, width, height])
+  return () => cancelAnimationFrame(raf)
+}, [currentSegmentIndex, mode, width, height])
 
-  // Scroll naar actieve segment
+
   useEffect(() => {
     if (isPreviewMode && segmentRefs.current[currentSegmentIndex]) {
       segmentRefs.current[currentSegmentIndex]?.scrollIntoView({
@@ -113,8 +127,8 @@ export function TextItem({
         onMouseDown?.(e)
       }}
       onClick={(e) => {
-        if (isPreviewMode && canAdvance) {
-          handleNextSegment(e)
+        if (isPreviewMode && canAdvance && !autoAdvance) {
+          handleNextSegment()
         } else if (isEditorMode) {
           onClick?.(e)
         }
@@ -141,7 +155,6 @@ export function TextItem({
 
         {segments.map((segment, index) => {
           if (isPreviewMode && index > currentSegmentIndex) return null
-
           const isCurrent = isPreviewMode && index === currentSegmentIndex
 
           return (
@@ -150,9 +163,7 @@ export function TextItem({
                 segmentRefs.current[index] = el
               }}
             >
-              {/* Spacer boven actieve segment */}
               {isCurrent && <div style={{ height: spacerHeight }} />}
-
               <div className={`flex justify-center ${isCurrent ? "" : "py-4"}`}>
                 <p
                   ref={isCurrent ? activeTextRef : undefined}
@@ -162,8 +173,6 @@ export function TextItem({
                   {segment.text}
                 </p>
               </div>
-
-              {/* Spacer onder actieve segment */}
               {isCurrent && <div style={{ height: spacerHeight }} />}
             </div>
           )
@@ -171,7 +180,7 @@ export function TextItem({
       </div>
 
       {/* Next indicator */}
-      {canAdvance && (
+      {canAdvance && !autoAdvance && (
         <div
           className="absolute bottom-2 left-0 w-full flex items-center justify-center text-foreground-muted animate-pulse pointer-events-none"
           style={{

@@ -196,6 +196,10 @@ export default function StepPreview({ step, flirtId, stepId }: StepPreviewProps)
                       isDragging={false}
                       resizeMode={null}
                       mode="preview"
+                      
+autoAdvance={el.autoAdvance ?? false}    
+      autoAdvanceDelay={el.autoAdvanceDelay ?? 3}
+
                     />
                   )
 

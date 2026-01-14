@@ -272,18 +272,12 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
                     </button>
                   )
                 })}
-                
+
               {/* ELEMENT TEXT */}
               {step.elements
                 .filter((el) => el.type === "TEXT")
                 .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
                 .map((el) => {
-
-                  const fontSize = `${Math.min(
-                    ((el.width ?? 300) / CANVAS_WIDTH) * scaledWidth / 10,
-                    ((el.height ?? 80) / CANVAS_HEIGHT) * scaledHeight / 3
-                  )}px`;
-
                   return (
                     <TextItem
                       key={el.id}
@@ -299,6 +293,8 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
                       isDragging={false}
                       resizeMode={null}
                       mode="preview"
+                      autoAdvance={el.autoAdvance ?? false}
+                      autoAdvanceDelay={el.autoAdvanceDelay ?? 3}
                     />
                   )
                 })}
