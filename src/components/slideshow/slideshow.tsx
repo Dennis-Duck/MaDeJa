@@ -13,8 +13,8 @@ const CANVAS_WIDTH = 1920
 const CANVAS_HEIGHT = 1080
 
 interface SlideshowStep {
-  id?: string;
-  order?: number;
+  id?: string
+  order?: number
   media: Media[]
   elements: Element[]
   logics?: Logic[]
@@ -50,12 +50,48 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
     }
   }
 
+  const executeLogicChain = (triggerLogicId: string) => {
+    const step = steps[current]
+    if (!step?.logics) return
+
+    const jumps = step.logics.filter((l: Logic) => l.type === "JUMP" && l.parentId === triggerLogicId)
+
+    jumps.forEach((jump: Logic) => {
+      if (!jump.config) return
+
+      try {
+        const cfg = JSON.parse(jump.config)
+        if (cfg.targetStepOrder === undefined) return
+
+        const targetIndex = steps.findIndex((s) => s.order === cfg.targetStepOrder)
+
+        if (targetIndex !== -1) {
+          setCurrent(targetIndex)
+        }
+      } catch {
+        console.warn("Invalid jump config", jump.id)
+      }
+    })
+  }
+
+  const handleButtonClick = (buttonId: string) => {
+    const step = steps[current]
+    if (!step?.logics) return
+
+    const triggers = step.logics.filter(
+      (l: Logic) => l.type === "TRIGGER" && l.subtype === "BUTTON_CLICK" && l.parentId === buttonId,
+    )
+
+    triggers.forEach((trigger: Logic) => {
+      executeLogicChain(trigger.id)
+    })
+  }
+
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement)
     document.addEventListener("fullscreenchange", handler)
     return () => document.removeEventListener("fullscreenchange", handler)
   }, [])
-
 
   useEffect(() => {
     const updateScale = () => {
@@ -90,60 +126,12 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
     const step = steps[current]
     if (!step?.logics) return
 
-    const stepLoadTriggers = step.logics.filter(
-      (l: Logic) => l.type === "TRIGGER" && l.subtype === "STEP_LOAD"
-    )
+    const stepLoadTriggers = step.logics.filter((l: Logic) => l.type === "TRIGGER" && l.subtype === "STEP_LOAD")
 
     stepLoadTriggers.forEach((trigger: Logic) => {
       executeLogicChain(trigger.id)
     })
   }, [current])
-
-  const handleButtonClick = (buttonId: string) => {
-    const step = steps[current]
-    if (!step?.logics) return
-
-    const triggers = step.logics.filter(
-      (l: Logic) =>
-        l.type === "TRIGGER" &&
-        l.subtype === "BUTTON_CLICK" &&
-        l.parentId === buttonId
-    )
-
-    triggers.forEach((trigger: Logic) => {
-      executeLogicChain(trigger.id)
-    })
-  }
-
-  const executeLogicChain = (triggerLogicId: string) => {
-    const step = steps[current]
-    if (!step?.logics) return
-
-    const jumps = step.logics.filter(
-      (l: Logic) =>
-        l.type === "JUMP" &&
-        l.parentId === triggerLogicId
-    )
-
-    jumps.forEach((jump: Logic) => {
-      if (!jump.config) return
-
-      try {
-        const cfg = JSON.parse(jump.config)
-        if (cfg.targetStepOrder === undefined) return
-
-        const targetIndex = steps.findIndex(
-          (s) => s.order === cfg.targetStepOrder
-        )
-
-        if (targetIndex !== -1) {
-          setCurrent(targetIndex)
-        }
-      } catch {
-        console.warn("Invalid jump config", jump.id)
-      }
-    })
-  }
 
   if (steps.length === 0) {
     return (
@@ -213,12 +201,7 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
                         zIndex: m.z ?? 0,
                       }}
                     >
-                      <Image
-                        src={m.url || "/placeholder.svg"}
-                        alt=""
-                        fill
-                        style={{ objectFit: "cover" }}
-                      />
+                      <Image src={m.url || "/placeholder.svg"} alt="" fill style={{ objectFit: "cover" }} />
                     </div>
                   ) : (
                     <video
@@ -243,14 +226,7 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
                 .filter((el) => el.type === "BUTTON")
                 .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
                 .map((el) => {
-
-                  const fontSize = `${Math.min(
-                    ((el.width ?? 200) / CANVAS_WIDTH) * scaledWidth / 10,
-                    ((el.height ?? 50) / CANVAS_HEIGHT) * scaledHeight / 3
-                  )}px`;
-
                   return (
-
                     <button
                       key={el.id}
                       onClick={() => handleButtonClick(el.id)}
@@ -262,8 +238,8 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
                         height: `${((el.height ?? 50) / CANVAS_HEIGHT) * 100}%`,
                         zIndex: el.z ?? 0,
                         fontSize: `${Math.min(
-                          ((el.width ?? 300) / CANVAS_WIDTH) * scaledWidth / 10,
-                          ((el.height ?? 80) / CANVAS_HEIGHT) * scaledHeight / 3
+                          (((el.width ?? 300) / CANVAS_WIDTH) * scaledWidth) / 10,
+                          (((el.height ?? 80) / CANVAS_HEIGHT) * scaledHeight) / 3,
                         )}px`,
                         padding: 0,
                       }}
@@ -300,7 +276,6 @@ export default function Slideshow({ steps, maxHeight, topStrip = 0 }: SlideshowP
                 })}
             </div>
           ))}
-
         </div>
       </div>
 

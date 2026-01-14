@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import type React from "react"
+
+import { useState, useRef, useEffect, useCallback } from "react"
 import type { ResizeHandle } from "@/app/hooks/use-canvas-interaction"
 import { ResizeHandles } from "../resize-handles"
-import { TextSegment } from "@/types/text-segment"
+import type { TextSegment } from "@/types/text-segment"
 
 interface TextItemProps {
   id: string
@@ -55,9 +57,8 @@ export function TextItem({
   const activeTextRef = useRef<HTMLParagraphElement | null>(null)
   const segmentRefs = useRef<(HTMLDivElement | null)[]>([])
 
-  const segments = textSegments.length > 0
-    ? textSegments
-    : (text ? [{ id: 'legacy', elementId: id, text, order: 0 }] : [])
+  const segments =
+    textSegments.length > 0 ? textSegments : text ? [{ id: "legacy", elementId: id, text, order: 0 }] : []
 
   const hasSegments = segments.length > 0
   const hasMultipleSegments = segments.length > 1
@@ -66,11 +67,11 @@ export function TextItem({
   const isPreviewMode = mode === "preview"
   const canAdvance = isPreviewMode && hasMultipleSegments && currentSegmentIndex < segments.length - 1
 
-  const handleNextSegment = () => {
+  const handleNextSegment = useCallback(() => {
     if (currentSegmentIndex < segments.length - 1) {
-      setCurrentSegmentIndex(prev => prev + 1)
+      setCurrentSegmentIndex((prev) => prev + 1)
     }
-  }
+  }, [currentSegmentIndex, segments.length])
 
   useEffect(() => {
     if (!isPreviewMode || !autoAdvance || !canAdvance) return
@@ -80,31 +81,34 @@ export function TextItem({
     }, autoAdvanceDelay * 1000)
 
     return () => clearTimeout(timer)
-  }, [currentSegmentIndex, isPreviewMode, autoAdvance, autoAdvanceDelay, canAdvance])
-
-  
-useEffect(() => {
-  if (!isPreviewMode || !containerRef.current || !activeTextRef.current) return
-
-  const raf = requestAnimationFrame(() => {
-    const containerHeight = containerRef.current!.clientHeight
-    const textHeight = activeTextRef.current!.clientHeight
-    const space = Math.max((containerHeight - textHeight) / 2, 0)
-    setSpacerHeight(space)
-  })
-
-  return () => cancelAnimationFrame(raf)
-}, [currentSegmentIndex, mode, width, height])
-
+  }, [currentSegmentIndex, isPreviewMode, autoAdvance, autoAdvanceDelay, canAdvance, handleNextSegment])
 
   useEffect(() => {
-    if (isPreviewMode && segmentRefs.current[currentSegmentIndex]) {
+    if (!isPreviewMode || !containerRef.current || !activeTextRef.current) return
+
+    const raf = requestAnimationFrame(() => {
+      const containerHeight = containerRef.current!.clientHeight
+      const textHeight = activeTextRef.current!.clientHeight
+      const space = Math.max((containerHeight - textHeight) / 2, 0)
+      setSpacerHeight(space)
+    })
+
+    return () => cancelAnimationFrame(raf)
+  }, [currentSegmentIndex, mode, width, height, isPreviewMode]) // Added isPreviewMode to dependencies
+
+  useEffect(() => {
+    if (!isPreviewMode || !segmentRefs.current[currentSegmentIndex]) return
+
+    // Wait for next frame to ensure spacer heights are applied
+    const raf = requestAnimationFrame(() => {
       segmentRefs.current[currentSegmentIndex]?.scrollIntoView({
         behavior: "smooth",
-        block: "start"
+        block: "center",
       })
-    }
-  }, [currentSegmentIndex, mode])
+    })
+
+    return () => cancelAnimationFrame(raf)
+  }, [currentSegmentIndex, mode, spacerHeight, isPreviewMode]) // Added isPreviewMode to dependencies
 
   return (
     <div
@@ -116,7 +120,7 @@ useEffect(() => {
         width,
         height,
         zIndex: z,
-        cursor: isPreviewMode && canAdvance ? "pointer" : (isDragging ? "grabbing" : "grab"),
+        cursor: isPreviewMode && canAdvance ? "pointer" : isDragging ? "grabbing" : "grab",
         outline: isSelected ? "2px solid #3b82f6" : "none",
         outlineOffset: "2px",
         pointerEvents: isPreviewMode ? "auto" : undefined,
@@ -148,9 +152,7 @@ useEffect(() => {
         }}
       >
         {!hasSegments && (
-          <div className="flex items-center justify-center h-full text-foreground-muted italic">
-            No text
-          </div>
+          <div className="flex items-center justify-center h-full text-foreground-muted italic">No text</div>
         )}
 
         {segments.map((segment, index) => {
@@ -158,7 +160,8 @@ useEffect(() => {
           const isCurrent = isPreviewMode && index === currentSegmentIndex
 
           return (
-            <div key={segment.id}
+            <div
+              key={segment.id}
               ref={(el: HTMLDivElement | null) => {
                 segmentRefs.current[index] = el
               }}
@@ -184,7 +187,7 @@ useEffect(() => {
         <div
           className="absolute bottom-2 left-0 w-full flex items-center justify-center text-foreground-muted animate-pulse pointer-events-none"
           style={{
-            fontSize: `${Math.min(width / 30, 12)}px`
+            fontSize: `${Math.min(width / 30, 12)}px`,
           }}
         >
           <span>▼</span>
