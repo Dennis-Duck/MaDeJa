@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react"
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react"
 import type { Step } from "@/types/step"
 
 // Action types for undo tracking
@@ -15,18 +15,18 @@ interface EditorContextType {
   step: Step
   setStep: (step: Step) => void
 
-  // Update step with undo tracking
+  // Update step with undo tracking (per-step)
   updateStep: (updater: (prev: Step) => Step, actionType?: string) => void
 
   // Dirty state (unsaved changes)
   isDirty: boolean
 
-  // Undo functionality
+  // Undo functionality (per-step)
   canUndo: boolean
   undo: () => void
   undoStack: EditorAction[]
 
-  // Save functionality
+  // Save functionality (global - saves current step)
   save: () => Promise<boolean>
   isSaving: boolean
 
@@ -51,26 +51,105 @@ interface EditorProviderProps {
 }
 
 const MAX_UNDO_STACK = 50
+const UNDO_STACK_STORAGE_KEY = "editor-undo-stacks"
+const STEP_STATE_STORAGE_KEY = "editor-step-states"
+
+// Helper to load undo stack from localStorage
+function loadUndoStack(stepId: string): EditorAction[] {
+  try {
+    if (typeof window === "undefined") return []
+    const stored = localStorage.getItem(UNDO_STACK_STORAGE_KEY)
+    if (!stored) return []
+    const allStacks = JSON.parse(stored) as Record<string, EditorAction[]>
+    return allStacks[stepId] || []
+  } catch {
+    return []
+  }
+}
+
+// Helper to save undo stack to localStorage
+function saveUndoStackToStorage(stepId: string, stack: EditorAction[]) {
+  try {
+    if (typeof window === "undefined") return
+    const stored = localStorage.getItem(UNDO_STACK_STORAGE_KEY) || "{}"
+    const allStacks = JSON.parse(stored) as Record<string, EditorAction[]>
+    allStacks[stepId] = stack
+    localStorage.setItem(UNDO_STACK_STORAGE_KEY, JSON.stringify(allStacks))
+  } catch {
+    // Silently fail if localStorage is not available
+  }
+}
+
+// Helper to load edited step state from localStorage
+function loadStepState(stepId: string, fallback: Step): Step {
+  try {
+    if (typeof window === "undefined") return fallback
+    const stored = localStorage.getItem(STEP_STATE_STORAGE_KEY)
+    if (!stored) return fallback
+    const allStates = JSON.parse(stored) as Record<string, Step>
+    return allStates[stepId] || fallback
+  } catch {
+    return fallback
+  }
+}
+
+// Helper to save step state to localStorage
+function saveStepStateToStorage(stepId: string, step: Step) {
+  try {
+    if (typeof window === "undefined") return
+    const stored = localStorage.getItem(STEP_STATE_STORAGE_KEY) || "{}"
+    const allStates = JSON.parse(stored) as Record<string, Step>
+    allStates[stepId] = step
+    localStorage.setItem(STEP_STATE_STORAGE_KEY, JSON.stringify(allStates))
+  } catch {
+    // Silently fail if localStorage is not available
+  }
+}
 
 export function EditorProvider({ children, initialStep }: EditorProviderProps) {
-  const [step, setStepState] = useState<Step>(initialStep)
+  // Load the edited state from localStorage if it exists, otherwise use initialStep
+  const [step, setStepState] = useState<Step>(() =>
+    loadStepState(initialStep.id, initialStep)
+  )
   const [originalStep, setOriginalStep] = useState<Step>(initialStep)
-  const [undoStack, setUndoStack] = useState<EditorAction[]>([])
+  // Load undo stack for this step from localStorage
+  const [undoStack, setUndoStack] = useState<EditorAction[]>(() =>
+    loadUndoStack(initialStep.id)
+  )
   const [isSaving, setIsSaving] = useState(false)
 
   // Track if there are unsaved changes
   const isDirty = JSON.stringify(step) !== JSON.stringify(originalStep)
   const canUndo = undoStack.length > 0
 
-  // Set step without tracking (used for initial load)
+  // Set step without tracking (used for navigation between steps)
   const setStep = useCallback((newStep: Step) => {
-    setStepState(newStep)
-  }, [])
+    // Only reset state if it's a different step
+    if (newStep.id !== step.id) {
+      // Load the edited state for the new step from localStorage
+      const savedState = loadStepState(newStep.id, newStep)
+      setStepState(savedState)
+      setOriginalStep(newStep) // originalStep is the server version
+      // Load the undo stack for the new step
+      const newStack = loadUndoStack(newStep.id)
+      setUndoStack(newStack)
+    }
+  }, [step.id])
 
-  // Update step with undo tracking
+  // Persist step state to localStorage whenever it changes
+  useEffect(() => {
+    saveStepStateToStorage(step.id, step)
+  }, [step])
+
+  // Persist undo stack to localStorage whenever it changes
+  useEffect(() => {
+    saveUndoStackToStorage(step.id, undoStack)
+  }, [step.id, undoStack])
+
+  // Update step with undo tracking (per-step)
   const updateStep = useCallback((updater: (prev: Step) => Step, actionType = "update") => {
     setStepState((prev) => {
-      // Save current state to undo stack
+      // Save current state to undo stack for this step
       setUndoStack((stack) => {
         const newStack = [
           ...stack,
@@ -88,7 +167,7 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
     })
   }, [])
 
-  // Undo last action
+  // Undo last action (per-step)
   const undo = useCallback(() => {
     setUndoStack((stack) => {
       if (stack.length === 0) return stack
@@ -100,7 +179,7 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
     })
   }, [])
 
-  // Save all changes to database
+  // Save all changes to database (global - saves current step)
   const save = useCallback(async (): Promise<boolean> => {
     if (!isDirty) return true
 
@@ -115,10 +194,16 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
       })
 
       if (res.ok) {
-        // Update original step to current state
-        setOriginalStep(step)
-        // Clear undo stack after successful save
+        const data = await res.json()
+        const savedStep = data.step
+
+        // Update state with the saved step from database
+        setStepState(savedStep)
+        setOriginalStep(savedStep)
+        // Clear undo stack for this step after successful save
         setUndoStack([])
+        // Also clear from localStorage
+        saveUndoStackToStorage(step.id, [])
         return true
       }
 

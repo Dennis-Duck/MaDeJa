@@ -1,12 +1,13 @@
 "use client"
 
 import { useEditor } from "@/contexts/editor-context"
+import { Z } from "@/lib/z-index"
 
 export function EditorToolbar() {
-  const { isDirty, canUndo, undo, save, isSaving, undoStack } = useEditor()
+  const { canUndo, undo, undoStack } = useEditor()
 
   return (
-    <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+    <div style={{ zIndex: Z.UI }}>
       {/* Undo button */}
       <button
         onClick={undo}
@@ -20,26 +21,6 @@ export function EditorToolbar() {
           <span className="text-xs bg-[var(--accent)] text-[var(--foreground)] px-1.5 py-0.5 rounded-full">
             {undoStack.length}
           </span>
-        )}
-      </button>
-
-      {/* Save button */}
-      <button
-        onClick={save}
-        disabled={!isDirty || isSaving}
-        className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-150 shadow-sm ${
-          isDirty
-            ? "bg-[var(--accent)] border-[var(--accent)] text-[var(--foreground)] hover:opacity-90"
-            : "bg-[var(--background-secondary)] border-[var(--border)] text-[var(--foreground)] opacity-60"
-        } disabled:cursor-not-allowed`}
-        title={isDirty ? "Save changes" : "No changes to save"}
-      >
-        <span className="text-sm font-medium">
-          {isSaving ? "Saving…" : "Save"}
-        </span>
-
-        {isDirty && !isSaving && (
-          <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
         )}
       </button>
     </div>

@@ -21,7 +21,7 @@ export default function StepNavigationFooter({
   onHome,
   onPreview,
 }: Props) {
-  const { isDirty, isSaving, canUndo } = useEditor();
+  const { isDirty, isSaving, canUndo, save, undo } = useEditor();
 
   return (
     <div className="flex gap-2 flex-wrap">
@@ -65,6 +65,28 @@ export default function StepNavigationFooter({
       >
         Home
       </button>
+
+      {/* Save Button */}
+      <button
+        onClick={save}
+        disabled={!isDirty || isSaving}
+        className={`flex items-center gap-2 px-3 py-1 rounded border transition-colors duration-150
+    ${isDirty
+            ? "bg-[var(--background-secondary)] border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--hover-bg)]"
+            : "bg-[var(--background-secondary)] border-[var(--border)] text-[var(--foreground)] opacity-60"
+          }
+    disabled:cursor-not-allowed`}
+        title={isDirty ? "Save changes" : "No changes to save"}
+      >
+        <span className="text-sm font-medium">
+          {isSaving ? "Saving…" : "Save"}
+        </span>
+
+        {isDirty && !isSaving && (
+          <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+        )}
+      </button>
+
     </div>
   );
 }

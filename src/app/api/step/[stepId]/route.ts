@@ -176,6 +176,8 @@ export async function PUT(req: NextRequest, context: RouteContext) {
                 z: m.z,
                 width: m.width,
                 height: m.height,
+                url: m.url,
+                type: m.type,
               },
             })
           } else {

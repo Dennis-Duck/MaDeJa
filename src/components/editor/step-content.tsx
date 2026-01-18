@@ -68,7 +68,7 @@ export default function StepContent({
   }, [])
 
   const updatePosition = useCallback(
-    (item: CanvasItemIdentifier, x: number, y: number) => {
+    async (item: CanvasItemIdentifier, x: number, y: number) => {
       const collectionKey = COLLECTION_MAP[item.type]
       updateStep(
         (prev) => ({
@@ -208,12 +208,13 @@ export default function StepContent({
 
   return (
     <div className="relative">
-      <p className="text-sm text-muted-foreground mb-4">
-        Step {step.order}/{totalSteps}
-      </p>
+      <div className="flex items-start justify-between mb-4">
+        <p className="text-sm text-muted-foreground mb-4">
+          Step {step.order}/{totalSteps}
+        </p>
 
-      <EditorToolbar />
-
+        <EditorToolbar />
+      </div>
       <Canvas
         ref={containerRef}
         width={CANVAS_WIDTH}
