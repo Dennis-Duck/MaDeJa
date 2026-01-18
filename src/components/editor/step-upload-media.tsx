@@ -1,74 +1,109 @@
+"use client"
 
-"use client";
+import type React from "react"
 
-import { useState } from "react";
+import { useState } from "react"
+import { useEditor } from "@/contexts/editor-context"
 
 interface UploadPicProps {
-  stepId: string;
-  onUploadComplete?: () => void; // callback naar parent
+  stepId: string
 }
 
-export default function UploadPic({ stepId, onUploadComplete }: UploadPicProps) {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+export default function UploadPic({ stepId }: UploadPicProps) {
+  const { updateStep } = useEditor()
+  const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    const selectedFile = e.target.files[0];
-    setFile(selectedFile);
-    setPreview(URL.createObjectURL(selectedFile));
-  };
+    if (!e.target.files) return
+    const selectedFile = e.target.files[0]
+    setFile(selectedFile)
+    setPreview(URL.createObjectURL(selectedFile))
+  }
 
   const handleUpload = async () => {
-    if (!file) return alert("Please select a file first");
+    if (!file) return alert("Please select a file first")
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("stepId", stepId);
+    setIsUploading(true)
 
-    const MAX_SIZE = 500;
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("stepId", stepId)
+
+    const MAX_SIZE = 500
+    let uploadWidth = 300
+    let uploadHeight = 300
 
     if (file.type.startsWith("image/")) {
       try {
         await new Promise<void>((resolve) => {
-          const img = new Image();
+          const img = new Image()
           img.onload = () => {
-            let { naturalWidth: width, naturalHeight: height } = img;
+            let { naturalWidth: width, naturalHeight: height } = img
 
-            // Scale down if image is too big
-            const scale = Math.min(MAX_SIZE / width, MAX_SIZE / height, 1);
-            width = Math.round(width * scale);
-            height = Math.round(height * scale);
+            const scale = Math.min(MAX_SIZE / width, MAX_SIZE / height, 1)
+            width = Math.round(width * scale)
+            height = Math.round(height * scale)
 
-            formData.append("width", String(width));
-            formData.append("height", String(height));
-            resolve();
-          };
-          img.onerror = () => resolve();
-          img.src = preview || URL.createObjectURL(file);
-        });
+            uploadWidth = width
+            uploadHeight = height
+
+            formData.append("width", String(width))
+            formData.append("height", String(height))
+            resolve()
+          }
+          img.onerror = () => resolve()
+          img.src = preview || URL.createObjectURL(file)
+        })
       } catch (e) {
         // ignore and continue without dimensions
       }
     }
 
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
 
-    if (!res.ok) return alert("Upload failed");
+      if (!res.ok) {
+        setIsUploading(false)
+        return alert("Upload failed")
+      }
 
-    const data = await res.json();
-    console.log("Upload result:", data);
+      const data = await res.json()
 
-    // Clear form immediately for UX
-    setFile(null);
-    setPreview(null);
+      const newMedia = {
+        id: data.media?.id || crypto.randomUUID(),
+        stepId,
+        url: data.url || data.media?.url,
+        type: file.type.startsWith("image/") ? "IMAGE" : "VIDEO",
+        x: 0,
+        y: 0,
+        z: 0,
+        width: uploadWidth,
+        height: uploadHeight,
+      }
 
-    // Notify parent to refresh step data
-    if (onUploadComplete) onUploadComplete(); // notify parent
-  };
+      updateStep(
+        (prev) => ({
+          ...prev,
+          media: [...prev.media, newMedia as any],
+        }),
+        "add-media",
+      )
+
+      // Clear form
+      setFile(null)
+      setPreview(null)
+      setIsUploading(false)
+    } catch (error) {
+      console.error("Upload error:", error)
+      setIsUploading(false)
+      alert("Upload failed")
+    }
+  }
 
   return (
     <div className="flex flex-col gap-2 max-w-sm p-2 border border-[var(--border)] rounded shadow-sm bg-[var(--background-secondary)] text-[var(--foreground)]">
@@ -93,7 +128,7 @@ export default function UploadPic({ stepId, onUploadComplete }: UploadPicProps) 
       {preview && (
         <div className="border border-[var(--border)] rounded p-1 bg-[var(--background)] text-center">
           {file?.type.startsWith("image/") ? (
-            <img src={preview} alt="Preview" className="max-w-full rounded" />
+            <img src={preview || "/placeholder.svg"} alt="Preview" className="max-w-full rounded" />
           ) : (
             <video src={preview} controls className="max-w-full rounded" />
           )}
@@ -102,11 +137,11 @@ export default function UploadPic({ stepId, onUploadComplete }: UploadPicProps) 
 
       <button
         onClick={handleUpload}
-        disabled={!file}
+        disabled={!file || isUploading}
         className="py-2 px-4 rounded bg-[var(--accent)] text-[var(--foreground)] hover:bg-[var(--hover-bg)] disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Upload
+        {isUploading ? "Uploading..." : "Upload"}
       </button>
     </div>
-  );
+  )
 }

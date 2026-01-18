@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef, useEffect, useCallback } from "react"
-import type { Step } from "@/types/step"
+import { useState, useRef, useCallback, useEffect } from "react"
 import type { Flirt } from "@/types/flirt"
 import { Canvas } from "./canvas/canvas"
 import { MediaItem } from "./canvas/elements/media"
@@ -15,6 +14,8 @@ import { TriggerItem } from "./canvas/logics/trigger"
 import { JumpItem } from "./canvas/logics/jump"
 import { InspectorsOverlay } from "./canvas/inspector/inspectors-overlay"
 import { TextItem } from "./canvas/elements/text"
+import { useEditor } from "@/contexts/editor-context"
+import { EditorToolbar } from "./canvas/editor-toolbar"
 
 const CANVAS_WIDTH = 1920
 const CANVAS_HEIGHT = 1080
@@ -34,21 +35,16 @@ interface CanvasItemIdentifier {
 }
 
 interface StepContentProps {
-  step: Step
   totalSteps: number
-  flirt?: Flirt;
-  onStepContentChange?: () => void
-  initialFlirtId?: string
+  flirt?: Flirt
 }
 
 export default function StepContent({
-  step: initialStep,
   totalSteps,
   flirt,
-  onStepContentChange,
-  initialFlirtId,
 }: StepContentProps) {
-  const [step, setStep] = useState<Step>(initialStep)
+  const { step, updateStep } = useEditor()
+
   const [selectedItem, setSelectedItem] = useState<CanvasItemIdentifier | null>(null)
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -68,82 +64,53 @@ export default function StepContent({
   })
 
   useEffect(() => {
-    async function fetchStep() {
-      const res = await fetch(`/api/step/${initialStep.id}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setStep(data.step)
-      }
-    }
-    fetchStep()
-  }, [initialFlirtId, initialStep.id])
-
-  useEffect(() => {
-    setStep(initialStep)
-  }, [initialStep])
+    // Empty effect for now - state is managed by EditorContext
+  }, [])
 
   const updatePosition = useCallback(
-    async (item: CanvasItemIdentifier, x: number, y: number) => {
-      const endpoint = `/api/step/${step.id}/${COLLECTION_MAP[item.type]}/${item.id}`
-
-      const res = await fetch(endpoint, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ x, y }),
-      })
-
-      if (res.ok) {
-        const collectionKey = COLLECTION_MAP[item.type]
-        setStep((prev) => ({
+    (item: CanvasItemIdentifier, x: number, y: number) => {
+      const collectionKey = COLLECTION_MAP[item.type]
+      updateStep(
+        (prev) => ({
           ...prev,
           [collectionKey]: prev[collectionKey].map((i) => (i.id === item.id ? { ...i, x, y } : i)),
-        }))
-        onStepContentChange?.()
-      }
+        }),
+        "move",
+      )
     },
-    [step.id, onStepContentChange],
+    [updateStep],
   )
 
   const updateSize = useCallback(
-    async (item: CanvasItemIdentifier, width: number, height: number) => {
-      const endpoint = `/api/step/${step.id}/${COLLECTION_MAP[item.type]}/${item.id}`
-
-      const res = await fetch(endpoint, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ width, height }),
-      })
-
-      if (res.ok) {
-        const collectionKey = COLLECTION_MAP[item.type]
-        setStep((prev) => ({
+    (item: CanvasItemIdentifier, width: number, height: number) => {
+      const collectionKey = COLLECTION_MAP[item.type]
+      updateStep(
+        (prev) => ({
           ...prev,
           [collectionKey]: prev[collectionKey].map((i) => (i.id === item.id ? { ...i, width, height } : i)),
-        }))
-        onStepContentChange?.()
-      }
+        }),
+        "resize",
+      )
     },
-    [step.id, onStepContentChange],
+    [updateStep],
   )
 
   const updateLayer = useCallback(
-    async (item: CanvasItemIdentifier, action: "front" | "forward" | "backward" | "back") => {
+    (item: CanvasItemIdentifier, action: "front" | "forward" | "backward" | "back") => {
       const collectionKey = COLLECTION_MAP[item.type]
       const allItems = step[collectionKey]
       const current = allItems.find((i) => i.id === item.id)
       if (!current) return
 
       const zValues = allItems.map((i) => i.z ?? 0)
-      const maxZ = Math.max(...zValues, 0)
       const minZ = Math.min(...zValues, 0)
 
       let newZ = current.z ?? 0
       switch (action) {
         case "front":
-          const allZ = [...step.media, ...step.elements, ...step.logics].map(i => i.z ?? (i.type === "element" ? 1 : 0))
+          const allZ = [...step.media, ...step.elements, ...step.logics].map(
+            (i) => i.z ?? (i.type === "element" ? 1 : 0),
+          )
           const maxZAll = Math.max(...allZ)
           newZ = maxZAll + 1
           break
@@ -166,45 +133,33 @@ export default function StepContent({
           break
       }
 
-      const endpoint = `/api/step/${step.id}/${COLLECTION_MAP[item.type]}/${item.id}`
-
-      const res = await fetch(endpoint, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ z: newZ }),
-      })
-
-      if (res.ok) {
-        setStep((prev) => ({
+      updateStep(
+        (prev) => ({
           ...prev,
           [collectionKey]: prev[collectionKey].map((i) => (i.id === item.id ? { ...i, z: newZ } : i)),
-        }))
-        onStepContentChange?.()
-      }
+        }),
+        "layer",
+      )
     },
-    [step, onStepContentChange],
+    [step, updateStep],
   )
 
   const handleDelete = useCallback(
-    async (item: CanvasItemIdentifier) => {
-      const endpoint = `/api/step/${step.id}/${COLLECTION_MAP[item.type]}/${item.id}`
-
-      const res = await fetch(endpoint, { method: "DELETE" })
-      if (!res.ok) return
-
+    (item: CanvasItemIdentifier) => {
       const collectionKey = COLLECTION_MAP[item.type]
-      setStep((prev) => ({
-        ...prev,
-        [collectionKey]: prev[collectionKey].filter((i) => i.id !== item.id),
-      }))
-
-      onStepContentChange?.()
+      updateStep(
+        (prev) => ({
+          ...prev,
+          [collectionKey]: prev[collectionKey].filter((i) => i.id !== item.id),
+        }),
+        "delete",
+      )
 
       if (selectedItem?.id === item.id && selectedItem?.type === item.type) {
         setSelectedItem(null)
       }
     },
-    [step.id, selectedItem, onStepContentChange],
+    [selectedItem, updateStep],
   )
 
   const { draggedItem, startDrag, startResize, handleMove, endInteraction } = useCanvasInteraction({
@@ -219,27 +174,30 @@ export default function StepContent({
     onPositionUpdate: updatePosition,
   })
 
-  const handleContextMenu = useCallback((e: React.MouseEvent, item: CanvasItemIdentifier) => {
-    e.preventDefault();
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, item: CanvasItemIdentifier) => {
+      e.preventDefault()
 
-    const collectionKey = COLLECTION_MAP[item.type];
-    const source = step[collectionKey];
-    const current = source.find(i => i.id === item.id);
+      const collectionKey = COLLECTION_MAP[item.type]
+      const source = step[collectionKey]
+      const current = source.find((i) => i.id === item.id)
 
-    const z = current?.z ?? (item.type === "element" ? 1 : 0);
+      const z = current?.z ?? (item.type === "element" ? 1 : 0)
 
-    const allZ = [...step.media, ...step.elements, ...step.logics].map(i => i.z ?? (i.type === "element" ? 1 : 0));
-    const maxZ = Math.max(...allZ);
+      const allZ = [...step.media, ...step.elements, ...step.logics].map((i) => i.z ?? (i.type === "element" ? 1 : 0))
+      const maxZ = Math.max(...allZ)
 
-    const itemsAtMaxZ = [...step.media, ...step.elements, ...step.logics].filter(i =>
-      (i.z ?? (i.type === "element" ? 1 : 0)) === maxZ
-    ).length;
+      const itemsAtMaxZ = [...step.media, ...step.elements, ...step.logics].filter(
+        (i) => (i.z ?? (i.type === "element" ? 1 : 0)) === maxZ,
+      ).length
 
-    const canBringToFront = z < maxZ || (z === maxZ && itemsAtMaxZ > 1);
+      const canBringToFront = z < maxZ || (z === maxZ && itemsAtMaxZ > 1)
 
-    setContextMenu({ x: e.clientX, y: e.clientY, item, z, maxZ, canBringToFront })
-    setSelectedItem(item)
-  }, [step])
+      setContextMenu({ x: e.clientX, y: e.clientY, item, z, maxZ, canBringToFront })
+      setSelectedItem(item)
+    },
+    [step],
+  )
 
   const toggleResizeMode = useCallback((itemId: string, mode: "scale" | "resize") => {
     setResizeMode((prev) => ({
@@ -249,10 +207,12 @@ export default function StepContent({
   }, [])
 
   return (
-    <div>
+    <div className="relative">
       <p className="text-sm text-muted-foreground mb-4">
         Step {step.order}/{totalSteps}
       </p>
+
+      <EditorToolbar />
 
       <Canvas
         ref={containerRef}
@@ -260,9 +220,8 @@ export default function StepContent({
         height={CANVAS_HEIGHT}
         scale={scale}
         onMouseMove={(e) => {
-          // Find the resizing item's current resizeMode
           let currentResizeMode: "scale" | "resize" | null = null
-          for (const [itemId, mode] of Object.entries(resizeMode)) {
+          for (const [, mode] of Object.entries(resizeMode)) {
             if (mode) {
               currentResizeMode = mode
               break
@@ -271,13 +230,11 @@ export default function StepContent({
           handleMove(e, currentResizeMode)
         }}
         onMouseUp={endInteraction}
-
-        onMouseDown={(e) => {
+        onMouseDown={() => {
           setContextMenu(null)
           setResizeMode({})
           setSelectedItem(null)
         }}
-
       >
         {step.media
           .sort((a, b) => (a.z ?? 0) - (b.z ?? 0))
@@ -304,7 +261,7 @@ export default function StepContent({
                     setSelectedItem(itemIdentifier)
                   }
                 }}
-                onClick={(e) => {
+                onClick={() => {
                   setSelectedItem(itemIdentifier)
                 }}
                 onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
@@ -352,7 +309,7 @@ export default function StepContent({
                       startDrag(e, el.id, "element", el.x, el.y)
                       setSelectedItem(itemIdentifier)
                     }}
-                    onClick={(e) => {
+                    onClick={() => {
                       setSelectedItem(itemIdentifier)
                     }}
                     onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
@@ -364,44 +321,35 @@ export default function StepContent({
                 )
 
               case "TEXT":
-  return (
-    <TextItem
-      key={el.id}
-      id={el.id}
-      x={el.x}
-      y={el.y}
-      width={el.width ?? 300}
-      height={el.height ?? 80}
-      z={el.z ?? 0}
-      text={el.text ?? undefined}
-      textSegments={el.textSegments}
-      isSelected={selectedItem?.id === el.id && selectedItem?.type === "element"}
-      isDragging={draggedItem === el.id}
-      resizeMode={resizeMode[el.id]}
-      mode="editor"
-      onMouseDown={(e) => {
-        startDrag(e, el.id, "element", el.x, el.y)
-        setSelectedItem(itemIdentifier)
-      }}
-      onClick={() => {
-        setSelectedItem(itemIdentifier)
-      }}
-      onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
-      onDelete={() => handleDelete(itemIdentifier)}
-      onResizeStart={(e, handle) =>
-        startResize(
-          e,
-          el.id,
-          "element",
-          handle,
-          el.width ?? 300,
-          el.height ?? 80,
-          el.x,
-          el.y
-        )
-      }
-    />
-  )
+                return (
+                  <TextItem
+                    key={el.id}
+                    id={el.id}
+                    x={el.x}
+                    y={el.y}
+                    width={el.width ?? 300}
+                    height={el.height ?? 80}
+                    z={el.z ?? 0}
+                    text={el.text ?? undefined}
+                    textSegments={el.textSegments}
+                    isSelected={selectedItem?.id === el.id && selectedItem?.type === "element"}
+                    isDragging={draggedItem === el.id}
+                    resizeMode={resizeMode[el.id]}
+                    mode="editor"
+                    onMouseDown={(e) => {
+                      startDrag(e, el.id, "element", el.x, el.y)
+                      setSelectedItem(itemIdentifier)
+                    }}
+                    onClick={() => {
+                      setSelectedItem(itemIdentifier)
+                    }}
+                    onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
+                    onDelete={() => handleDelete(itemIdentifier)}
+                    onResizeStart={(e, handle) =>
+                      startResize(e, el.id, "element", handle, el.width ?? 300, el.height ?? 80, el.x, el.y)
+                    }
+                  />
+                )
 
               default:
                 return null
@@ -436,7 +384,16 @@ export default function StepContent({
                     onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
                     onDelete={() => handleDelete(itemIdentifier)}
                     onResizeStart={(e, handle) =>
-                      startResize(e, logic.id, "logic", handle, logic.width ?? 150, logic.height ?? 50, logic.x, logic.y)
+                      startResize(
+                        e,
+                        logic.id,
+                        "logic",
+                        handle,
+                        logic.width ?? 150,
+                        logic.height ?? 50,
+                        logic.x,
+                        logic.y,
+                      )
                     }
                   />
                 )
@@ -463,7 +420,16 @@ export default function StepContent({
                     onContextMenu={(e) => handleContextMenu(e, itemIdentifier)}
                     onDelete={() => handleDelete(itemIdentifier)}
                     onResizeStart={(e, handle) =>
-                      startResize(e, logic.id, "logic", handle, logic.width ?? 150, logic.height ?? 50, logic.x, logic.y)
+                      startResize(
+                        e,
+                        logic.id,
+                        "logic",
+                        handle,
+                        logic.width ?? 150,
+                        logic.height ?? 50,
+                        logic.x,
+                        logic.y,
+                      )
                     }
                   />
                 )
@@ -471,15 +437,12 @@ export default function StepContent({
                 return null
             }
           })}
-
       </Canvas>
 
-      {/* Inspectors overlay */}
       <InspectorsOverlay
         selectedItem={selectedItem}
         step={step}
         flirt={flirt}
-        onStepContentChange={onStepContentChange}
       />
 
       <p className="text-xs text-muted-foreground mt-2" style={{ visibility: selectedItem ? "visible" : "hidden" }}>
@@ -491,13 +454,11 @@ export default function StepContent({
           itemType={contextMenu.item.type}
           x={contextMenu.x}
           y={contextMenu.y}
-          z={
-            (() => {
-              const collectionKey = COLLECTION_MAP[contextMenu.item.type];
-              const item = step[collectionKey].find(i => i.id === contextMenu.item.id);
-              return item?.z ?? (contextMenu.item.type === "element" ? 1 : 0);
-            })()
-          }
+          z={(() => {
+            const collectionKey = COLLECTION_MAP[contextMenu.item.type]
+            const item = step[collectionKey].find((i) => i.id === contextMenu.item.id)
+            return item?.z ?? (contextMenu.item.type === "element" ? 1 : 0)
+          })()}
           maxZ={contextMenu.maxZ}
           canBringToFront={contextMenu.canBringToFront}
           resizeMode={resizeMode[contextMenu.item.id]}

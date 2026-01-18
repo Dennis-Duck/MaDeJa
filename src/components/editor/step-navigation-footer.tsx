@@ -1,5 +1,6 @@
-
 "use client";
+
+import { useEditor } from "@/contexts/editor-context";
 
 interface Props {
   stepOrder: number;
@@ -20,8 +21,10 @@ export default function StepNavigationFooter({
   onHome,
   onPreview,
 }: Props) {
+  const { isDirty, isSaving, canUndo } = useEditor();
+
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2 flex-wrap">
       {/* Previous */}
       <button
         onClick={onPrevious}

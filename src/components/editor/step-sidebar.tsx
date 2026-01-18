@@ -6,22 +6,20 @@ import LogicsPicker from "./canvas/logics/logics-picker";
 
 interface StepSidebarProps {
   stepId: string;
-  onStepChange?: () => void; // callback to parent
 }
 
-export default function StepSidebar({ stepId, onStepChange }: StepSidebarProps) {
+export default function StepSidebar({ stepId }: StepSidebarProps) {
   return (
     <div className="space-y-4">
       <div className="p-2 border rounded shadow-sm">
         <h3 className="mb-3 font-semibold">Add media</h3>
-        <UploadPic stepId={stepId} onUploadComplete={onStepChange} />
+        <UploadPic stepId={stepId} />
       </div>
 
       <div className="p-2 border rounded shadow-sm">
         <h3 className="mb-3 font-semibold">Add element</h3>
         <ElementsPicker
           stepId={stepId}
-          onElementAdded={onStepChange}
         />
       </div>
 
@@ -30,7 +28,6 @@ export default function StepSidebar({ stepId, onStepChange }: StepSidebarProps) 
         </h3>
         <LogicsPicker
           stepId={stepId}
-          onLogicAdded={onStepChange}
         />
       </div>
     </div>

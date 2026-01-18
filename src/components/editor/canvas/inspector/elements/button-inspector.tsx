@@ -1,41 +1,45 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { Step} from "@/types/step";
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import type { Step } from "@/types/step"
+import { useEditor } from "@/contexts/editor-context"
 
 interface ButtonInspectorProps {
-  buttonId?: string;
-  step?: Step;
-  onUpdateStep?: () => void;
+  buttonId?: string
+  step?: Step
+  onUpdateStep?: () => void
 }
 
 export function ButtonInspector({ buttonId, step, onUpdateStep }: ButtonInspectorProps) {
-  if (!buttonId || !step) return null;
-
-  const button = step.elements.find((el) => el.id === buttonId && el.type === "BUTTON");
-  const [text, setText] = useState(button?.text ?? "");
+  const { updateStep } = useEditor()
+  const [text, setText] = useState("")
+  const button = step?.elements.find((el) => el.id === buttonId && el.type === "BUTTON")
 
   useEffect(() => {
-    setText(button?.text ?? "");
-  }, [button?.text]);
+    if (button) {
+      setText(button.text)
+    }
+  }, [button])
+
+  if (!buttonId || !step || !button) return null
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setText(e.target.value);
-  };
+    setText(e.target.value)
+  }
 
-  const handleSave = async () => {
-    if (!button) return;
+  const handleSave = () => {
+    updateStep(
+      (prev) => ({
+        ...prev,
+        elements: prev.elements.map((el) => (el.id === button.id ? { ...el, text } : el)),
+      }),
+      "update-button-text",
+    )
 
-    const res = await fetch(`/api/step/${step.id}/elements/${button.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
-
-    if (res.ok) {
-      onUpdateStep?.();
-    }
-  };
+    onUpdateStep?.()
+  }
 
   return (
     <div className="bg-background flex flex-col gap-2 p-4 rounded shadow">
@@ -54,8 +58,8 @@ export function ButtonInspector({ buttonId, step, onUpdateStep }: ButtonInspecto
         onClick={handleSave}
         className="py-2 px-4 rounded bg-[var(--accent)] text-[var(--foreground)] hover:bg-[var(--hover-bg)]"
       >
-        Save
+        Apply
       </button>
     </div>
-  );
+  )
 }

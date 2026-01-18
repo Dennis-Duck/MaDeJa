@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Step } from "@/types/step"
-import { TextSegment } from "@/types/text-segment"
+import type { Step } from "@/types/step"
+import type { TextSegment } from "@/types/text-segment"
+import { useEditor } from "@/contexts/editor-context"
 
 interface TextInspectorProps {
   textId?: string
@@ -11,67 +12,79 @@ interface TextInspectorProps {
 }
 
 export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps) {
-  if (!textId || !step) return null
-
-  const textElement = step.elements.find(
-    (el) => el.id === textId && el.type === "TEXT"
-  )
-
-  if (!textElement) return null
-
-  const [segments, setSegments] = useState<TextSegment[]>(textElement.textSegments || [])
+  const { updateStep } = useEditor()
+  const [segments, setSegments] = useState<TextSegment[]>([])
   const [newSegmentText, setNewSegmentText] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState("")
 
   useEffect(() => {
-    setSegments(textElement.textSegments || [])
-  }, [textElement.textSegments])
+    if (!textId || !step) return
 
-  const handleAddSegment = async () => {
+    const textElement = step.elements.find((el) => el.id === textId && el.type === "TEXT")
+
+    if (!textElement) return
+
+    setSegments(textElement.textSegments || [])
+  }, [textId, step])
+
+  const handleAddSegment = () => {
     if (!newSegmentText.trim()) return
 
-    const res = await fetch(`/api/step/${step.id}/elements/${textElement.id}/segments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: newSegmentText }),
-    })
-
-    if (res.ok) {
-      const { segment } = await res.json()
-      setSegments([...segments, segment])
-      setNewSegmentText("")
-      onUpdateStep?.()
+    const newSegment: TextSegment = {
+      id: crypto.randomUUID(),
+      elementId: textId!,
+      order: segments.length,
+      text: newSegmentText,
     }
+
+    const updatedSegments = [...segments, newSegment]
+    setSegments(updatedSegments)
+    setNewSegmentText("")
+
+    updateStep(
+      (prev) => ({
+        ...prev,
+        elements: prev.elements.map((el) => (el.id === textId ? { ...el, textSegments: updatedSegments } : el)),
+      }),
+      "add-text-segment",
+    )
+
+    onUpdateStep?.()
   }
 
-  const handleUpdateSegment = async (segmentId: string) => {
+  const handleUpdateSegment = (segmentId: string) => {
     if (!editText.trim()) return
 
-    const res = await fetch(`/api/step/${step.id}/elements/${textElement.id}/segments/${segmentId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: editText }),
-    })
+    const updatedSegments = segments.map((s) => (s.id === segmentId ? { ...s, text: editText } : s))
+    setSegments(updatedSegments)
+    setEditingId(null)
+    setEditText("")
 
-    if (res.ok) {
-      const { segment } = await res.json()
-      setSegments(segments.map(s => s.id === segmentId ? segment : s))
-      setEditingId(null)
-      setEditText("")
-      onUpdateStep?.()
-    }
+    updateStep(
+      (prev) => ({
+        ...prev,
+        elements: prev.elements.map((el) => (el.id === textId ? { ...el, textSegments: updatedSegments } : el)),
+      }),
+      "update-text-segment",
+    )
+
+    onUpdateStep?.()
   }
 
-  const handleDeleteSegment = async (segmentId: string) => {
-    const res = await fetch(`/api/step/${step.id}/elements/${textElement.id}/segments/${segmentId}`, {
-      method: "DELETE",
-    })
+  const handleDeleteSegment = (segmentId: string) => {
+    const updatedSegments = segments.filter((s) => s.id !== segmentId)
+    setSegments(updatedSegments)
 
-    if (res.ok) {
-      setSegments(segments.filter(s => s.id !== segmentId))
-      onUpdateStep?.()
-    }
+    updateStep(
+      (prev) => ({
+        ...prev,
+        elements: prev.elements.map((el) => (el.id === textId ? { ...el, textSegments: updatedSegments } : el)),
+      }),
+      "delete-text-segment",
+    )
+
+    onUpdateStep?.()
   }
 
   const startEdit = (segment: TextSegment) => {
@@ -84,6 +97,30 @@ export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps
     setEditText("")
   }
 
+  const handleAutoAdvanceChange = (checked: boolean) => {
+    updateStep(
+      (prev) => ({
+        ...prev,
+        elements: prev.elements.map((el) => (el.id === textId ? { ...el, autoAdvance: checked } : el)),
+      }),
+      "toggle-auto-advance",
+    )
+
+    onUpdateStep?.()
+  }
+
+  const handleAutoAdvanceDelayChange = (delay: number) => {
+    updateStep(
+      (prev) => ({
+        ...prev,
+        elements: prev.elements.map((el) => (el.id === textId ? { ...el, autoAdvanceDelay: delay } : el)),
+      }),
+      "update-auto-advance-delay",
+    )
+
+    onUpdateStep?.()
+  }
+
   return (
     <div className="bg-background flex flex-col gap-4 p-4 rounded shadow max-h-[80vh] overflow-hidden">
       <h2 className="text-lg font-semibold">Text Segments</h2>
@@ -91,9 +128,7 @@ export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps
       {/* Segments lijst - scrollbaar */}
       <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-2">
         {segments.length === 0 && (
-          <p className="text-foreground-muted text-sm italic">
-            No text segments yet. Add one!
-          </p>
+          <p className="text-foreground-muted text-sm italic">No text segments yet. Add one!</p>
         )}
 
         {segments.map((segment, index) => (
@@ -102,9 +137,7 @@ export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps
             className="bg-[var(--background-secondary)] p-3 rounded border border-[var(--hover-border)] flex flex-col gap-2"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs text-foreground-muted font-mono">
-                Segment {index + 1}
-              </span>
+              <span className="text-xs text-foreground-muted font-mono">Segment {index + 1}</span>
               <div className="flex gap-1">
                 {editingId === segment.id ? (
                   <>
@@ -148,9 +181,7 @@ export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps
                 rows={3}
               />
             ) : (
-              <p className="text-foreground text-sm whitespace-pre-wrap">
-                {segment.text}
-              </p>
+              <p className="text-foreground text-sm whitespace-pre-wrap">{segment.text}</p>
             )}
           </div>
         ))}
@@ -158,9 +189,7 @@ export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps
 
       {/* Add nieuwe segment */}
       <div className="border-t border-[var(--hover-border)] pt-4 flex flex-col gap-2">
-        <label className="text-sm font-medium text-foreground">
-          Add new segment
-        </label>
+        <label className="text-sm font-medium text-foreground">Add new segment</label>
         <textarea
           value={newSegmentText}
           onChange={(e) => setNewSegmentText(e.target.value)}
@@ -183,33 +212,19 @@ export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps
           <label className="text-sm text-foreground">Enable Auto Advance</label>
           <input
             type="checkbox"
-            checked={textElement.autoAdvance || false}
-            onChange={async (e) => {
-              const res = await fetch(`/api/step/${step.id}/elements/${textElement.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ autoAdvance: e.target.checked }),
-              })
-              if (res.ok) onUpdateStep?.()
-            }}
+            checked={step?.elements.find((el) => el.id === textId)?.autoAdvance || false}
+            onChange={(e) => handleAutoAdvanceChange(e.target.checked)}
           />
         </div>
 
-        {textElement.autoAdvance && (
+        {step?.elements.find((el) => el.id === textId)?.autoAdvance && (
           <div className="flex items-center gap-2">
             <label className="text-sm text-foreground">Delay (seconds)</label>
             <input
               type="number"
               min={1}
-              value={textElement.autoAdvanceDelay || 3}
-              onChange={async (e) => {
-                const res = await fetch(`/api/step/${step.id}/elements/${textElement.id}`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ autoAdvanceDelay: parseInt(e.target.value) }),
-                })
-                if (res.ok) onUpdateStep?.()
-              }}
+              value={step?.elements.find((el) => el.id === textId)?.autoAdvanceDelay || 3}
+              onChange={(e) => handleAutoAdvanceDelayChange(Number.parseInt(e.target.value))}
               className="w-16 p-1 rounded border bg-[var(--background-secondary)] text-foreground"
             />
           </div>

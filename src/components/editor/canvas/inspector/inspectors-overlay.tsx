@@ -24,7 +24,6 @@ interface InspectorsOverlayProps {
   selectedItem: CanvasItemIdentifier | null;
   step?: Step;
   flirt?: Flirt;
-  onStepContentChange?: () => void;
 }
 
 function mapSelectedItem(item: CanvasItemIdentifier | null): SelectedItem | null {
@@ -52,7 +51,7 @@ function mapSelectedItem(item: CanvasItemIdentifier | null): SelectedItem | null
   return { id: item.id, type, subtype };
 }
 
-export function InspectorsOverlay({ selectedItem, step, flirt, onStepContentChange }: InspectorsOverlayProps) {
+export function InspectorsOverlay({ selectedItem, step, flirt }: InspectorsOverlayProps) {
   const [logicPos, setLogicPos] = useState({ x: 1100, y: 50, width: 350, height: 400 });
   const [variablePos, setVariablePos] = useState({ x: 700, y: 500, width: 300, height: 400 });
   const [elementPos, setElementPos] = useState({ x: 200, y: 200, width: 320, height: 400 });
@@ -77,10 +76,6 @@ export function InspectorsOverlay({ selectedItem, step, flirt, onStepContentChan
             subtype={mappedItem.subtype}
             step={step}
             flirt={flirt}
-            onUpdateStep={() => {
-              if (!step) return;
-              onStepContentChange?.();
-            }}
           />
         </DraggableInspector>
       )}
@@ -115,10 +110,6 @@ export function InspectorsOverlay({ selectedItem, step, flirt, onStepContentChan
             elementId={mappedItem.id}
             subtype={mappedItem.subtype}
             step={step}
-            onUpdateStep={() => {
-              if (!step) return;
-              onStepContentChange?.();
-            }}
           />
 
         </DraggableInspector>

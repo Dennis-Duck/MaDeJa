@@ -1,37 +1,57 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
 
 interface RouteContext {
-  params: Promise<{ stepId: string }>;
+  params: Promise<{ stepId: string }>
 }
 
-export async function POST(req: Request, context: RouteContext) {
+export async function GET(req: Request, context: RouteContext) {
   try {
-    const { stepId } = await context.params;
-    const body = await req.json();
-    const { flirtId } = body;
+    const { stepId } = await context.params
 
-    if (!flirtId || !stepId) {
-      return NextResponse.json({ error: "Missing data" }, { status: 400 });
+    if (!stepId) {
+      return NextResponse.json({ error: "Missing stepId" }, { status: 400 })
     }
 
-    const currentStep = await prisma.step.findUnique({ where: { id: stepId } });
-    if (!currentStep) return NextResponse.json({ error: "Step not found" }, { status: 404 });
+    const currentStep = await prisma.step.findUnique({
+      where: { id: stepId },
+    })
+
+    if (!currentStep) {
+      return NextResponse.json({ error: "Step not found" }, { status: 404 })
+    }
 
     const previousStep = await prisma.step.findFirst({
-      where: { flirtId, order: currentStep.order - 1 },
-      include: { 
+      where: {
+        flirtId: currentStep.flirtId,
+        order: currentStep.order - 1,
+      },
+      include: {
         media: true,
-        elements: true,
+        elements: {
+          include: {
+            textSegments: {
+              orderBy: { order: "asc" },
+            },
+          },
+        },
         logics: true,
       },
-    });
+    })
 
-    if (!previousStep) return NextResponse.json({ error: "No previous step" }, { status: 404 });
+    if (!previousStep) {
+      return NextResponse.json({ error: "No previous step" }, { status: 404 })
+    }
 
-    return NextResponse.json({ step: previousStep });
+    return NextResponse.json({ step: previousStep })
   } catch (err) {
-    console.error("PREVIOUS STEP ERROR", err);
-    return NextResponse.json({ error: "Failed to get previous step" }, { status: 500 });
+    console.error("GET PREVIOUS STEP ERROR", err)
+    return NextResponse.json({ error: "Failed to get previous step" }, { status: 500 })
   }
+}
+
+export async function POST() {
+  // For POST on /previous, we don't create new steps
+  // This endpoint is only for navigation
+  return NextResponse.json({ error: "POST not allowed on /previous" }, { status: 405 })
 }

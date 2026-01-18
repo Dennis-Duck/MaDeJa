@@ -12,8 +12,8 @@ interface CanvasItemIdentifier {
 
 interface UseCanvasInteractionProps {
   scale: number
-  onPositionUpdate: (item: CanvasItemIdentifier, x: number, y: number) => Promise<void>
-  onSizeUpdate: (item: CanvasItemIdentifier, width: number, height: number) => Promise<void>
+  onPositionUpdate: (item: CanvasItemIdentifier, x: number, y: number) => void
+  onSizeUpdate: (item: CanvasItemIdentifier, width: number, height: number) => void
 }
 
 export function useCanvasInteraction({ scale, onPositionUpdate, onSizeUpdate }: UseCanvasInteractionProps) {
@@ -182,7 +182,7 @@ export function useCanvasInteraction({ scale, onPositionUpdate, onSizeUpdate }: 
     [resizeState, draggedItem, scale],
   )
 
-  const endInteraction = useCallback(async () => {
+  const endInteraction = useCallback(() => {
     if (resizeState) {
       const el = document.getElementById(`${resizeState.itemType}-${resizeState.itemId}`)
       if (el) {
@@ -190,8 +190,8 @@ export function useCanvasInteraction({ scale, onPositionUpdate, onSizeUpdate }: 
         const newHeight = Number.parseInt(el.style.height) || resizeState.startHeight
         const newX = Number.parseInt(el.style.left) || resizeState.startPosX
         const newY = Number.parseInt(el.style.top) || resizeState.startPosY
-        await onSizeUpdate({ id: resizeState.itemId, type: resizeState.itemType }, newWidth, newHeight)
-        await onPositionUpdate({ id: resizeState.itemId, type: resizeState.itemType }, newX, newY)
+        onSizeUpdate({ id: resizeState.itemId, type: resizeState.itemType }, newWidth, newHeight)
+        onPositionUpdate({ id: resizeState.itemId, type: resizeState.itemType }, newX, newY)
       }
       setResizeState(null)
     } else if (draggedItem && dragStart.current && draggedItemType.current) {
@@ -199,7 +199,7 @@ export function useCanvasInteraction({ scale, onPositionUpdate, onSizeUpdate }: 
       if (el) {
         const newX = Number.parseInt(el.style.left) || dragStart.current.itemX
         const newY = Number.parseInt(el.style.top) || dragStart.current.itemY
-        await onPositionUpdate({ id: draggedItem, type: draggedItemType.current }, newX, newY)
+        onPositionUpdate({ id: draggedItem, type: draggedItemType.current }, newX, newY)
       }
       setDraggedItem(null)
       draggedItemType.current = null

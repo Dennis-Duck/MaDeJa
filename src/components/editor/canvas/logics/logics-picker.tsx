@@ -1,42 +1,45 @@
-"use client";
+"use client"
 
-interface LogicsPickerProps {
-  stepId: string;
-  onLogicAdded?: () => void;
-}
+import { useEditor } from "@/contexts/editor-context"
 
 const LOGICS = [
   { type: "TRIGGER", label: "Trigger" },
   { type: "JUMP", label: "Jump" },
   { type: "CHECK", label: "Check" },
   { type: "ACTION", label: "Action" },
-];
+]
 
-export default function LogicsPicker({ stepId, onLogicAdded }: LogicsPickerProps) {
+export default function LogicsPicker() {
+  const { updateStep, step } = useEditor()
 
-  const addLogic = async (type: string) => {
-    try {
-      const res = await fetch(`/api/step/${stepId}/logics`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to add logic block");
-      }
-
-      onLogicAdded?.();
-    } catch (err) {
-      console.error("Error adding logic block:", err);
-      alert("Failed to add logic block");
+  const addLogic = (type: string) => {
+    const newLogic = {
+      id: crypto.randomUUID(),
+      stepId: step.id,
+      type,
+      subtype: null,
+      config: null,
+      parentId: null,
+      parentType: null,
+      x: 100,
+      y: 100,
+      z: 0,
+      width: 150,
+      height: 50,
     }
-  };
+
+    updateStep(
+      (prev) => ({
+        ...prev,
+        logics: [...prev.logics, newLogic as any],
+      }),
+      "add-logic",
+    )
+  }
 
   return (
     <div className="grid grid-cols-2 gap-2">
-      {LOGICS.map(logic => (
+      {LOGICS.map((logic) => (
         <button
           key={logic.type}
           onClick={() => addLogic(logic.type)}
@@ -46,5 +49,5 @@ export default function LogicsPicker({ stepId, onLogicAdded }: LogicsPickerProps
         </button>
       ))}
     </div>
-  );
+  )
 }

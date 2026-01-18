@@ -1,71 +1,76 @@
-"use client";
+"use client"
 
-import { Flirt } from "@/types/flirt";
-import { Step } from "@/types/step";
-import { useEffect, useState } from "react";
+import type { Flirt } from "@/types/flirt"
+import type { Step } from "@/types/step"
+import { useEffect, useState } from "react"
+import { useEditor } from "@/contexts/editor-context"
 
 interface JumpInspectorProps {
-  logicId?: string;
-  step?: Step;
-  flirt?: Flirt;         
-  onUpdateStep?: () => void;
+  logicId?: string
+  step?: Step
+  flirt?: Flirt
+  onUpdateStep?: () => void
 }
 
-export function JumpInspector({
-  logicId,
-  step,
-  flirt,
-  onUpdateStep,
-}: JumpInspectorProps) {
-  if (!logicId || !step) return null;
-
-  const [parentLogicId, setParentLogicId] = useState<string>("");
-  const [targetStepOrder, setTargetStepOrder] = useState<string>("");
-
-  const parentCandidates = step.logics.filter(
-    (l) => l.id !== logicId && l.type !== "JUMP"
-  );
+export function JumpInspector({ logicId, step, flirt, onUpdateStep }: JumpInspectorProps) {
+  const { updateStep } = useEditor()
+  const [parentLogicId, setParentLogicId] = useState<string>("")
+  const [targetStepOrder, setTargetStepOrder] = useState<string>("")
 
   useEffect(() => {
-    const currentLogic = step.logics.find((l) => l.id === logicId);
-    if (!currentLogic) return;
+    if (!step || !logicId) return
+
+    const currentLogic = step.logics.find((l) => l.id === logicId)
+    if (!currentLogic) return
 
     if (currentLogic.parentId) {
-      setParentLogicId(currentLogic.parentId);
+      setParentLogicId(currentLogic.parentId)
     }
 
     if (currentLogic.config) {
       try {
-        const cfg = JSON.parse(currentLogic.config);
+        const cfg = JSON.parse(currentLogic.config)
         if (cfg.targetStepOrder !== undefined) {
-          setTargetStepOrder(String(cfg.targetStepOrder));
+          setTargetStepOrder(String(cfg.targetStepOrder))
         }
       } catch {
         // ignore malformed JSON
       }
     }
-  }, [step, logicId]);
+  }, [step, logicId])
 
-  const handleSave = async () => {
-    if (!logicId) return;
+  // Early return after hooks
+  if (!logicId || !step) return null
 
-    const parentLogic = step.logics.find((l) => l.id === parentLogicId);
-    if (!parentLogic) return;
+  const parentCandidates = step.logics.filter((l) => l.id !== logicId && l.type !== "JUMP")
 
-    const config = JSON.stringify({ targetStepOrder: Number(targetStepOrder) });
+  const handleSave = () => {
+    if (!logicId) return
 
-    const res = await fetch(`/api/step/${step.id}/logics/${logicId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        parentId: parentLogic.id,
-        parentType: parentLogic.type,
-        config,
+    const parentLogic = step.logics.find((l) => l.id === parentLogicId)
+    if (!parentLogic) return
+
+    const config = JSON.stringify({ targetStepOrder: Number(targetStepOrder) })
+
+    updateStep(
+      (prev) => ({
+        ...prev,
+        logics: prev.logics.map((l) =>
+          l.id === logicId
+            ? {
+                ...l,
+                parentId: parentLogic.id,
+                parentType: parentLogic.type,
+                config,
+              }
+            : l,
+        ),
       }),
-    });
+      "update-jump",
+    )
 
-    if (res.ok) onUpdateStep?.();
-  };
+    onUpdateStep?.()
+  }
 
   return (
     <div className="bg-background flex flex-col gap-2 p-4 rounded shadow">
@@ -110,8 +115,8 @@ export function JumpInspector({
         onClick={handleSave}
         className="mt-4 py-2 px-4 rounded bg-[var(--accent)] text-[var(--foreground)] hover:bg-[var(--hover-bg)]"
       >
-        Save
+        Apply
       </button>
     </div>
-  );
+  )
 }

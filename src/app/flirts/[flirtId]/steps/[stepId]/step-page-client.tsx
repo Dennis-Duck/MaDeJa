@@ -1,14 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import type { Step } from "@/types/step";
-import { useStepEditor } from "@/app/hooks/use-step-editor";
+import { EditorProvider } from "@/contexts/editor-context";
 
-import StepEditorLayout from "@/components/editor/step-editor-layout";
-import StepSidebar from "@/components/editor/step-sidebar";
-import StepContent from "@/components/editor/step-content";
-import StepNavigationFooter from "@/components/editor/step-navigation-footer";
 import { Flirt } from "@/types/flirt";
+import StepPageClientInner from "./step-page-client-inner";
 
 interface StepPageClientProps {
   initialFlirtId: string;
@@ -23,59 +19,14 @@ export default function StepPageClient({
   totalSteps,
   flirt,
 }: StepPageClientProps) {
-  const router = useRouter();
-
-  const {
-    step,
-    totalSteps: totalStepsState,
-    isLastStep,
-    fetchStep,
-    next,
-    previous,
-    deleteStep,
-  } = useStepEditor(initialFlirtId, initialStep, totalSteps);
-
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this step?")) return;
-    try {
-      await deleteStep();
-    } catch (err) {
-      console.error("Failed to delete step", err);
-      alert("Error while deleting step");
-    }
-  };
-
   return (
-    <StepEditorLayout
-      sidebar={
-        <StepSidebar
-          stepId={step.id}
-          onStepChange={() => fetchStep(step.id)}
-        />
-      }
-      content={
-        <StepContent
-          step={step}
-          totalSteps={totalStepsState}
-          flirt={flirt}
-          onStepContentChange={() => fetchStep(step.id)}
-        />
-      }
-      footer={
-        <StepNavigationFooter
-          stepOrder={step.order}
-          isLast={isLastStep}
-          onNext={() => next()}
-          onPrevious={() => previous()}
-          onDelete={handleDelete}
-          onHome={() => router.push("/")}
-          onPreview={() =>
-            router.push(
-              `/flirts/${initialFlirtId}/steps/${step.id}/preview`
-            )
-          }
-        />
-      }
-    />
+    <EditorProvider initialStep={initialStep}>
+      <StepPageClientInner
+        initialFlirtId={initialFlirtId}
+        initialStep={initialStep}
+        totalSteps={totalSteps}
+        flirt={flirt}
+      />
+    </EditorProvider>
   );
 }

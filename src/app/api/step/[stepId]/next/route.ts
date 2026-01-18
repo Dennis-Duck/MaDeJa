@@ -1,69 +1,112 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
 
 interface RouteContext {
-  params: Promise<{ stepId: string }>;
+  params: Promise<{ stepId: string }>
 }
 
-export async function POST(req: NextRequest, context: RouteContext) {
+export async function GET(req: Request, context: RouteContext) {
   try {
-    const { stepId } = await context.params;
-    const body = await req.json();
-    const { flirtId } = body;
+    const { stepId } = await context.params
 
-    if (!flirtId) {
-      return NextResponse.json(
-        { error: "Missing flirtId" },
-        { status: 400 }
-      );
+    if (!stepId) {
+      return NextResponse.json({ error: "Missing stepId" }, { status: 400 })
     }
 
-    const steps = await prisma.step.findMany({
-      where: { flirtId },
-      orderBy: { order: "asc" },
-      include: { 
+    const currentStep = await prisma.step.findUnique({
+      where: { id: stepId },
+    })
+
+    if (!currentStep) {
+      return NextResponse.json({ error: "Step not found" }, { status: 404 })
+    }
+
+    const nextStep = await prisma.step.findFirst({
+      where: {
+        flirtId: currentStep.flirtId,
+        order: currentStep.order + 1,
+      },
+      include: {
         media: true,
-        elements: true,
+        elements: {
+          include: {
+            textSegments: {
+              orderBy: { order: "asc" },
+            },
+          },
+        },
         logics: true,
       },
-    });
-
-    let nextStep;
-
-    if (stepId) {
-      const currentIndex = steps.findIndex(
-        (step) => step.id === stepId
-      );
-
-      if (currentIndex !== -1 && currentIndex < steps.length - 1) {
-        nextStep = steps[currentIndex + 1];
-      }
-    }
+    })
 
     if (!nextStep) {
-      nextStep = await prisma.step.create({
-        data: {
-          flirtId,
-          content: "",
-          order: steps.length + 1,
-        },
-        include: { 
-          media: true,
-          elements: true,
-          logics: true,
-      },
-      });
-      steps.push(nextStep);
+      return NextResponse.json({ error: "No next step" }, { status: 404 })
     }
 
-    const totalSteps = steps.length;
-
-    return NextResponse.json({ step: nextStep, totalSteps });
+    return NextResponse.json({ step: nextStep })
   } catch (err) {
-    console.error("NEXT STEP ERROR", err);
-    return NextResponse.json(
-      { error: "Failed to get or create next step" },
-      { status: 500 }
-    );
+    console.error("GET NEXT STEP ERROR", err)
+    return NextResponse.json({ error: "Failed to get next step" }, { status: 500 })
+  }
+}
+
+export async function POST(req: Request, context: RouteContext) {
+  try {
+    const { stepId } = await context.params
+
+    if (!stepId) {
+      return NextResponse.json({ error: "Missing stepId" }, { status: 400 })
+    }
+
+    const currentStep = await prisma.step.findUnique({
+      where: { id: stepId },
+    })
+
+    if (!currentStep) {
+      return NextResponse.json({ error: "Step not found" }, { status: 404 })
+    }
+
+    // Create a new step after the current one
+    const order = currentStep.order + 1
+
+    const newStep = await prisma.step.create({
+      data: {
+        flirtId: currentStep.flirtId,
+        content: "",
+        order: order,
+      },
+      include: {
+        media: true,
+        elements: {
+          include: {
+            textSegments: {
+              orderBy: { order: "asc" },
+            },
+          },
+        },
+        logics: true,
+      },
+    })
+
+    // Update order of all subsequent steps
+    await prisma.step.updateMany({
+      where: {
+        flirtId: currentStep.flirtId,
+        order: { gte: order },
+        id: { not: newStep.id },
+      },
+      data: {
+        order: { increment: 1 },
+      },
+    })
+
+    const totalSteps = await prisma.step.count({
+      where: { flirtId: currentStep.flirtId },
+    })
+
+    return NextResponse.json({ step: newStep, totalSteps })
+  } catch (err) {
+    console.error("POST NEXT STEP ERROR", err)
+    return NextResponse.json({ error: "Failed to create next step" }, { status: 500 })
   }
 }
