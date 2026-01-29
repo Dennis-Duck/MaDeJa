@@ -18,17 +18,13 @@ export default function StepSidebar({ stepId }: StepSidebarProps) {
 
       <div className="p-2 border rounded shadow-sm">
         <h3 className="mb-3 font-semibold">Add element</h3>
-        <ElementsPicker
-          stepId={stepId}
-        />
+        <ElementsPicker />
       </div>
 
        <div className="p-2 border rounded shadow-sm">
         <h3 className="mb-3 font-semibold">Add logic
         </h3>
-        <LogicsPicker
-          stepId={stepId}
-        />
+        <LogicsPicker />  
       </div>
     </div>
   );

@@ -169,8 +169,8 @@ export function useCanvasInteraction({ scale, onPositionUpdate, onSizeUpdate }: 
       } else if (draggedItem && dragStart.current && draggedItemType.current) {
         const deltaX = (e.clientX - dragStart.current.x) / scale
         const deltaY = (e.clientY - dragStart.current.y) / scale
-        const newX = Math.max(0, dragStart.current.itemX + deltaX)
-        const newY = Math.max(0, dragStart.current.itemY + deltaY)
+        const newX = dragStart.current.itemX + deltaX
+        const newY = dragStart.current.itemY + deltaY
 
         const el = document.getElementById(`${draggedItemType.current}-${draggedItem}`)
         if (el) {

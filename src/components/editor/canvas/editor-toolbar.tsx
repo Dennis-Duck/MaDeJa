@@ -4,15 +4,45 @@ import { useEditor } from "@/contexts/editor-context"
 import { Z } from "@/lib/z-index"
 
 export function EditorToolbar() {
-  const { canUndo, undo, undoStack } = useEditor()
+  const { isDirty, isSaving, canUndo, save, undo, undoStack } = useEditor()
 
   return (
-    <div style={{ zIndex: Z.UI }}>
+    <div style={{ zIndex: Z.UI }} className="flex items-center gap-2">
+      {/* Save button */}
+      <button
+        onClick={save}
+        disabled={!isDirty || isSaving}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg
+               bg-[var(--background-secondary)]
+               border border-[var(--border)]
+               text-[var(--foreground)]
+               hover:bg-[var(--hover-bg)]
+               hover:border-[var(--hover-border)]
+               disabled:opacity-40 disabled:cursor-not-allowed
+               transition-all duration-150 shadow-sm"
+        title={isDirty ? "Save changes" : "No changes to save"}
+      >
+        <span className="text-sm font-medium">
+          {isSaving ? "Saving…" : "Save"}
+        </span>
+
+        {isDirty && !isSaving && (
+          <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+        )}
+      </button>
+
       {/* Undo button */}
       <button
         onClick={undo}
         disabled={!canUndo}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--background-secondary)] border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--hover-bg)] hover:border-[var(--hover-border)] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 shadow-sm"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg
+               bg-[var(--background-secondary)]
+               border border-[var(--border)]
+               text-[var(--foreground)]
+               hover:bg-[var(--hover-bg)]
+               hover:border-[var(--hover-border)]
+               disabled:opacity-40 disabled:cursor-not-allowed
+               transition-all duration-150 shadow-sm"
         title={canUndo ? `Undo (${undoStack.length} actions)` : "Nothing to undo"}
       >
         <span className="text-sm font-medium">Undo</span>

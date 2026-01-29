@@ -12,7 +12,6 @@ import { useKeyboardNavigation } from "@/app/hooks/use-keyboard-navigation"
 import { ButtonItem } from "./canvas/elements/button"
 import { TriggerItem } from "./canvas/logics/trigger"
 import { JumpItem } from "./canvas/logics/jump"
-import { InspectorsOverlay } from "./canvas/inspector/inspectors-overlay"
 import { TextItem } from "./canvas/elements/text"
 import { useEditor } from "@/contexts/editor-context"
 import { EditorToolbar } from "./canvas/editor-toolbar"
@@ -37,15 +36,21 @@ interface CanvasItemIdentifier {
 interface StepContentProps {
   totalSteps: number
   flirt?: Flirt
+  selectedItem?: CanvasItemIdentifier | null
+  onSelectedItemChange?: (item: CanvasItemIdentifier | null) => void
 }
 
 export default function StepContent({
   totalSteps,
   flirt,
+  selectedItem: externalSelectedItem,
+  onSelectedItemChange,
 }: StepContentProps) {
   const { step, updateStep } = useEditor()
 
-  const [selectedItem, setSelectedItem] = useState<CanvasItemIdentifier | null>(null)
+  const [internalSelectedItem, setInternalSelectedItem] = useState<CanvasItemIdentifier | null>(null)
+  const selectedItem = externalSelectedItem !== undefined ? externalSelectedItem : internalSelectedItem
+  const setSelectedItem = externalSelectedItem !== undefined ? onSelectedItemChange! : setInternalSelectedItem
   const [contextMenu, setContextMenu] = useState<{
     x: number
     y: number
@@ -63,12 +68,9 @@ export default function StepContent({
     canvasHeight: CANVAS_HEIGHT,
   })
 
-  useEffect(() => {
-    // Empty effect for now - state is managed by EditorContext
-  }, [])
-
   const updatePosition = useCallback(
     async (item: CanvasItemIdentifier, x: number, y: number) => {
+      console.trace('updatePosition called', item.id, x, y) 
       const collectionKey = COLLECTION_MAP[item.type]
       updateStep(
         (prev) => ({
@@ -159,7 +161,7 @@ export default function StepContent({
         setSelectedItem(null)
       }
     },
-    [selectedItem, updateStep],
+    [selectedItem, updateStep, setSelectedItem], // Voeg setSelectedItem toe
   )
 
   const { draggedItem, startDrag, startResize, handleMove, endInteraction } = useCanvasInteraction({
@@ -196,7 +198,7 @@ export default function StepContent({
       setContextMenu({ x: e.clientX, y: e.clientY, item, z, maxZ, canBringToFront })
       setSelectedItem(item)
     },
-    [step],
+    [step, setSelectedItem],
   )
 
   const toggleResizeMode = useCallback((itemId: string, mode: "scale" | "resize") => {
@@ -439,12 +441,6 @@ export default function StepContent({
             }
           })}
       </Canvas>
-
-      <InspectorsOverlay
-        selectedItem={selectedItem}
-        step={step}
-        flirt={flirt}
-      />
 
       <p className="text-xs text-muted-foreground mt-2" style={{ visibility: selectedItem ? "visible" : "hidden" }}>
         Use arrow keys to move the selected item

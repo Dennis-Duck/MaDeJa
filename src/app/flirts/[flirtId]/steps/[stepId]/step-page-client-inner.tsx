@@ -9,7 +9,14 @@ import StepEditorLayout from "@/components/editor/step-editor-layout";
 import StepSidebar from "@/components/editor/step-sidebar";
 import StepContent from "@/components/editor/step-content";
 import StepNavigationFooter from "@/components/editor/step-navigation-footer";
+import { InspectorsOverlay } from "@/components/editor/canvas/inspector/inspectors-overlay";
 import { Flirt } from "@/types/flirt";
+
+interface CanvasItemIdentifier {
+  id: string
+  type: "media" | "element" | "logic"
+  subtype?: string
+}
 
 interface StepPageClientInnerProps {
   initialFlirtId: string;
@@ -26,6 +33,7 @@ export default function StepPageClientInner({
   const router = useRouter();
   const { step } = useEditor();
   const [totalStepsState, setTotalStepsState] = useState(totalSteps);
+  const [selectedItem, setSelectedItem] = useState<CanvasItemIdentifier | null>(null);
   const isLastStep = step.order >= totalStepsState;
 
   const fetchNextStep = async () => {
@@ -115,6 +123,15 @@ export default function StepPageClientInner({
       content={
         <StepContent
           totalSteps={totalStepsState}
+          flirt={flirt}
+          selectedItem={selectedItem}
+          onSelectedItemChange={setSelectedItem}
+        />
+      }
+      overlay={
+        <InspectorsOverlay
+          selectedItem={selectedItem}
+          step={step}
           flirt={flirt}
         />
       }
