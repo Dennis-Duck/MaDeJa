@@ -2,8 +2,9 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useEditor } from "@/contexts/editor-context"
+import { Media } from "@/generated/prisma"
 
 interface UploadPicProps {
   stepId: string
@@ -14,6 +15,7 @@ export default function UploadPic({ stepId }: UploadPicProps) {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return
@@ -57,7 +59,7 @@ export default function UploadPic({ stepId }: UploadPicProps) {
           img.src = preview || URL.createObjectURL(file)
         })
       } catch (e) {
-        // ignore and continue without dimensions
+
       }
     }
 
@@ -89,15 +91,18 @@ export default function UploadPic({ stepId }: UploadPicProps) {
       updateStep(
         (prev) => ({
           ...prev,
-          media: [...prev.media, newMedia as any],
+          media: [...prev.media, newMedia as Media],
         }),
         "add-media",
       )
 
-      // Clear form
       setFile(null)
       setPreview(null)
       setIsUploading(false)
+      
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
     } catch (error) {
       console.error("Upload error:", error)
       setIsUploading(false)
@@ -114,6 +119,7 @@ export default function UploadPic({ stepId }: UploadPicProps) {
         Choose File
       </label>
       <input
+        ref={fileInputRef}
         id="file-upload"
         type="file"
         accept="image/*,video/*"
