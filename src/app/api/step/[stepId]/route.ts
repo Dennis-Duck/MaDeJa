@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { Logic, Media } from "@/generated/prisma/wasm"
 
 interface RouteContext {
   params: Promise<{ stepId: string }>
@@ -100,32 +101,38 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Step not found" }, { status: 404 })
     }
 
-    // Delete the step (cascading delete will remove media automatically)
-    await prisma.step.delete({
-      where: { id: stepId },
+    const flirtId = step.flirtId
+    const deletedOrder = step.order
+
+    // Use transaction for atomic operations
+    await prisma.$transaction(async (tx) => {
+      await tx.step.delete({
+        where: { id: stepId },
+      })
+
+      await tx.step.updateMany({
+        where: {
+          flirtId,
+          order: { gt: deletedOrder },
+        },
+        data: {
+          order: { decrement: 1 },
+        },
+      })
     })
 
-    // Update order of remaining steps
-    await prisma.step.updateMany({
-      where: {
-        flirtId: step.flirtId,
-        order: { gt: step.order },
-      },
-      data: {
-        order: { decrement: 1 },
-      },
+    const totalSteps = await prisma.step.count({ where: { flirtId } })
+    const allSteps = await prisma.step.findMany({
+      where: { flirtId },
+      orderBy: { order: "asc" },
+      select: { id: true, order: true },
     })
 
-    const previousStep = await prisma.step.findFirst({
-      where: { flirtId: step.flirtId, order: step.order - 1 },
-      include: {
-        media: true,
-        elements: true,
-        logics: true,
-      },
+    return NextResponse.json({
+      success: true,
+      totalSteps,
+      updatedSteps: allSteps,
     })
-
-    return NextResponse.json({ success: true, previousStep })
   } catch (err) {
     console.error("DELETE STEP ERROR", err)
     return NextResponse.json({ error: "Failed to delete step" }, { status: 500 })
@@ -154,7 +161,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
           select: { id: true },
         })
         const existingMediaIds = new Set(existingMedia.map((m) => m.id))
-        const newMediaIds = new Set(media.map((m: any) => m.id))
+        const newMediaIds = new Set(media.map((m: Media) => m.id))
 
         // Delete removed media
         const mediaToDelete = [...existingMediaIds].filter((id) => !newMediaIds.has(id))
@@ -192,6 +199,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
                 z: m.z,
                 width: m.width,
                 height: m.height,
+                type: m.type,
               },
             })
           }
@@ -205,7 +213,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
           select: { id: true },
         })
         const existingElementIds = new Set(existingElements.map((e) => e.id))
-        const newElementIds = new Set(elements.map((e: any) => e.id))
+        const newElementIds = new Set(elements.map((e: Element) => e.id))
 
         // Delete removed elements
         const elementsToDelete = [...existingElementIds].filter((id) => !newElementIds.has(id))
@@ -296,7 +304,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
           select: { id: true },
         })
         const existingLogicIds = new Set(existingLogics.map((l) => l.id))
-        const newLogicIds = new Set(logics.map((l: any) => l.id))
+        const newLogicIds = new Set(logics.map((l: Logic) => l.id))
 
         // Delete removed logics
         const logicsToDelete = [...existingLogicIds].filter((id) => !newLogicIds.has(id))

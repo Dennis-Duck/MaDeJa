@@ -22,7 +22,7 @@ type StepEditorState = {
 interface EditorContextType {
   // Get current step
   step: Step
-  
+
   // Set current step (navigate between steps)
   setStep: (step: Step) => void
 
@@ -51,9 +51,15 @@ interface EditorContextType {
 
   // Add or update a step in context
   addOrUpdateStep: (step: Step) => void
-  
+
   // Get step state for a specific step ID
   getStepState: (stepId: string) => StepEditorState | undefined
+
+  // Remove a step (cleanup state + storage)
+  removeStep: (stepId: string) => void
+
+  // Sync order changes after deletion (updates all steps with new orders from DB)
+  syncStepOrders: (updatedOrders: Array<{ id: string; order: number }>) => void
 }
 
 const EditorContext = createContext<EditorContextType | null>(null)
@@ -165,6 +171,49 @@ function saveStepStateToStorage(stepId: string, step: Step) {
   }
 }
 
+// Helper to remove step state + undo/redo stacks from localStorage
+function removeStepStateFromStorage(stepId: string) {
+  try {
+    if (typeof window === "undefined") return
+    const stored = localStorage.getItem(STEP_STATE_STORAGE_KEY) || "{}"
+    const allStates = JSON.parse(stored) as Record<string, Step>
+    if (allStates[stepId]) {
+      delete allStates[stepId]
+      localStorage.setItem(STEP_STATE_STORAGE_KEY, JSON.stringify(allStates))
+    }
+  } catch {
+    // Silently fail
+  }
+}
+
+function removeUndoStackFromStorage(stepId: string) {
+  try {
+    if (typeof window === "undefined") return
+    const stored = localStorage.getItem(UNDO_STACK_STORAGE_KEY) || "{}"
+    const allStacks = JSON.parse(stored) as Record<string, EditorAction[]>
+    if (allStacks[stepId]) {
+      delete allStacks[stepId]
+      localStorage.setItem(UNDO_STACK_STORAGE_KEY, JSON.stringify(allStacks))
+    }
+  } catch {
+    // Silently fail
+  }
+}
+
+function removeRedoStackFromStorage(stepId: string) {
+  try {
+    if (typeof window === "undefined") return
+    const stored = localStorage.getItem(REDO_STACK_STORAGE_KEY) || "{}"
+    const allStacks = JSON.parse(stored) as Record<string, EditorAction[]>
+    if (allStacks[stepId]) {
+      delete allStacks[stepId]
+      localStorage.setItem(REDO_STACK_STORAGE_KEY, JSON.stringify(allStacks))
+    }
+  } catch {
+    // Silently fail
+  }
+}
+
 // Reducer state type - holds ALL steps
 type EditorState = {
   // All steps keyed by stepId
@@ -186,6 +235,8 @@ type EditorReducerAction =
   | { type: "SAVE_START" }
   | { type: "SAVE_SUCCESS"; savedSteps: Step[] }
   | { type: "SAVE_ERROR" }
+  | { type: "REMOVE_STEP"; stepId: string }
+  | { type: "SYNC_STEP_ORDERS"; updatedOrders: Array<{ id: string; order: number }> }
 
 // Reducer function - all state updates are atomic
 function editorReducer(state: EditorState, action: EditorReducerAction): EditorState {
@@ -212,6 +263,7 @@ function editorReducer(state: EditorState, action: EditorReducerAction): EditorS
         currentStepId: action.step.id,
       }
     }
+
     case "ADD_OR_UPDATE_STEP": {
       const existing = state.steps[action.step.id]
       if (existing) {
@@ -352,7 +404,7 @@ function editorReducer(state: EditorState, action: EditorReducerAction): EditorS
 
     case "SAVE_SUCCESS": {
       const newSteps = { ...state.steps }
-      
+
       // Update originalStep for all saved steps, but KEEP undo stacks
       for (const savedStep of action.savedSteps) {
         if (newSteps[savedStep.id]) {
@@ -377,6 +429,45 @@ function editorReducer(state: EditorState, action: EditorReducerAction): EditorS
       return {
         ...state,
         isSaving: false,
+      }
+    }
+
+    case "REMOVE_STEP": {
+      const newSteps = { ...state.steps }
+      delete newSteps[action.stepId]
+
+      const newCurrent = state.currentStepId === action.stepId ? "" : state.currentStepId
+
+      return {
+        ...state,
+        steps: newSteps,
+        currentStepId: newCurrent,
+      }
+    }
+
+    case "SYNC_STEP_ORDERS": {
+      const newSteps = { ...state.steps }
+
+      // Update orders for all steps based on DB response
+      for (const { id, order } of action.updatedOrders) {
+        if (newSteps[id]) {
+          newSteps[id] = {
+            ...newSteps[id],
+            step: {
+              ...newSteps[id].step,
+              order,
+            },
+            originalStep: {
+              ...newSteps[id].originalStep,
+              order,
+            },
+          }
+        }
+      }
+
+      return {
+        ...state,
+        steps: newSteps,
       }
     }
 
@@ -465,6 +556,19 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
     return JSON.stringify(stepState.step) !== JSON.stringify(stepState.originalStep)
   }, [state.steps])
 
+  // Remove a step (cleanup in-memory + localStorage)
+  const removeStep = useCallback((stepId: string) => {
+    dispatch({ type: "REMOVE_STEP", stepId })
+    removeStepStateFromStorage(stepId)
+    removeUndoStackFromStorage(stepId)
+    removeRedoStackFromStorage(stepId)
+  }, [])
+
+  // Sync step orders from DB (called after deletion)
+  const syncStepOrders = useCallback((updatedOrders: Array<{ id: string; order: number }>) => {
+    dispatch({ type: "SYNC_STEP_ORDERS", updatedOrders })
+  }, [])
+
   // Global save: save ALL dirty steps in parallel
   const save = useCallback(async (): Promise<boolean> => {
     if (!isDirty) return true
@@ -500,12 +604,12 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
 
       // All saves successful
       dispatch({ type: "SAVE_SUCCESS", savedSteps: results })
-      
+
       // Clear undo stacks in localStorage for all saved steps
       dirtySteps.forEach(stepState => {
         saveUndoStackToStorage(stepState.step.id, [])
       })
-      
+
       return true
     } catch (error) {
       console.error("Error saving steps:", error)
@@ -532,6 +636,8 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
         isSaving: state.isSaving,
         addOrUpdateStep,
         getStepState,
+        removeStep,
+        syncStepOrders,
       }}
     >
       {children}

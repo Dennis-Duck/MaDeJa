@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEditor } from "@/contexts/editor-context";
 import type { Step } from "@/types/step";
 
 export function useStepEditor(
@@ -65,6 +66,8 @@ export function useStepEditor(
     }
   };
 
+  const { removeStep, addOrUpdateStep} = useEditor();
+
   const deleteStep = async () => {
     let targetStepId: string | null = null;
 
@@ -86,10 +89,16 @@ export function useStepEditor(
       if (resPrev.ok) targetStepId = (await resPrev.json()).step.id;
     }
 
-    await fetch(`/api/step/${step.id}`, {
+    const resDelete = await fetch(`/api/step/${step.id}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
     });
+
+    if (!resDelete.ok) {
+      throw new Error("Failed to delete step")
+    }
+
+    removeStep(step.id)
 
     if (targetStepId) {
       await fetchStep(targetStepId);
@@ -101,6 +110,7 @@ export function useStepEditor(
         body: JSON.stringify({ flirtId: initialFlirtId }),
       });
       const data = await resCreate.json();
+      addOrUpdateStep(data.step);
       setStep(data.step);
       setTotalSteps(1);
       router.replace(`/flirts/${initialFlirtId}/steps/${data.step.id}`);

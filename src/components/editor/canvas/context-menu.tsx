@@ -20,7 +20,6 @@ export function ContextMenu({
   x,
   y,
   z,
-  maxZ,
   canBringToFront,
   resizeMode,
   onDelete,

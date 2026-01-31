@@ -31,7 +31,7 @@ export default function StepPageClientInner({
   flirt,
 }: StepPageClientInnerProps) {
   const router = useRouter();
-  const { step } = useEditor();
+  const { step, setStep, addOrUpdateStep, removeStep, syncStepOrders } = useEditor();
   const [totalStepsState, setTotalStepsState] = useState(totalSteps);
   const [selectedItem, setSelectedItem] = useState<CanvasItemIdentifier | null>(null);
   const isLastStep = step.order >= totalStepsState;
@@ -80,6 +80,7 @@ export default function StepPageClientInner({
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this step?")) return;
+
     try {
       let targetStepId: string | null = null;
 
@@ -87,25 +88,68 @@ export default function StepPageClientInner({
         const resNext = await fetch(`/api/step/${step.id}/next`, {
           method: "GET",
         });
-        if (resNext.ok) targetStepId = (await resNext.json()).step.id;
+        if (resNext.ok) {
+          targetStepId = (await resNext.json()).step.id;
+        }
       }
 
       if (!targetStepId) {
         const resPrev = await fetch(`/api/step/${step.id}/previous`, {
           method: "GET",
         });
-        if (resPrev.ok) targetStepId = (await resPrev.json()).step.id;
+        if (resPrev.ok) {
+          targetStepId = (await resPrev.json()).step.id;
+        }
       }
 
-      await fetch(`/api/step/${step.id}`, {
+      const resDelete = await fetch(`/api/step/${step.id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
 
+      if (!resDelete.ok) {
+        throw new Error("Failed to delete step");
+      }
+
+      const deleteData = await resDelete.json();
+      const { success, totalSteps: newTotalSteps, updatedSteps } = deleteData;
+
+      if (!success) {
+        throw new Error("Delete operation failed");
+      }
+
+      removeStep(step.id);
+
+      if (updatedSteps && updatedSteps.length > 0) {
+        syncStepOrders(updatedSteps);
+      }
+
+      setTotalStepsState(newTotalSteps);
+
       if (targetStepId) {
-        router.replace(`/flirts/${initialFlirtId}/steps/${targetStepId}`);
+        const resTarget = await fetch(`/api/step/${targetStepId}`, {
+          method: "GET",
+        });
+
+        if (resTarget.ok) {
+          const targetData = await resTarget.json();
+          setStep(targetData.step);
+          router.replace(`/flirts/${initialFlirtId}/steps/${targetStepId}`);
+        }
       } else {
-        router.push("/");
+        const resCreate = await fetch("/api/step", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ flirtId: initialFlirtId }),
+        });
+
+        if (resCreate.ok) {
+          const createData = await resCreate.json();
+          addOrUpdateStep(createData.step);
+          setStep(createData.step);
+          setTotalStepsState(1);
+          router.replace(`/flirts/${initialFlirtId}/steps/${createData.step.id}`);
+        }
       }
     } catch (err) {
       console.error("Failed to delete step", err);
