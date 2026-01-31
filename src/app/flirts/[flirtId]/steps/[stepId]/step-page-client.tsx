@@ -1,7 +1,8 @@
 "use client";
 
 import type { Step } from "@/types/step";
-import { EditorProvider } from "@/contexts/editor-context";
+import { useEditor } from "@/contexts/editor-context";
+import { useEffect } from "react";
 
 import { Flirt } from "@/types/flirt";
 import StepPageClientInner from "./step-page-client-inner";
@@ -19,14 +20,20 @@ export default function StepPageClient({
   totalSteps,
   flirt,
 }: StepPageClientProps) {
+  const { addOrUpdateStep, setStep } = useEditor();
+
+  // When initialStep changes (navigation), update the context
+  useEffect(() => {
+    addOrUpdateStep(initialStep);
+    setStep(initialStep);
+  }, [initialStep, addOrUpdateStep, setStep]);
+
   return (
-    <EditorProvider initialStep={initialStep}>
-      <StepPageClientInner
-        initialFlirtId={initialFlirtId}
-        initialStep={initialStep}
-        totalSteps={totalSteps}
-        flirt={flirt}
-      />
-    </EditorProvider>
+    <StepPageClientInner
+      initialFlirtId={initialFlirtId}
+      initialStep={initialStep}
+      totalSteps={totalSteps}
+      flirt={flirt}
+    />
   );
 }

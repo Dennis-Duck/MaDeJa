@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef, useCallback, useEffect } from "react"
+import { useState, useRef, useCallback } from "react"
 import type { Flirt } from "@/types/flirt"
 import { Canvas } from "./canvas/canvas"
 import { MediaItem } from "./canvas/elements/media"
@@ -42,7 +42,6 @@ interface StepContentProps {
 
 export default function StepContent({
   totalSteps,
-  flirt,
   selectedItem: externalSelectedItem,
   onSelectedItemChange,
 }: StepContentProps) {
