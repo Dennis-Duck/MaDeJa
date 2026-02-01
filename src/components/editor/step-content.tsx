@@ -15,6 +15,7 @@ import { JumpItem } from "./canvas/logics/jump"
 import { TextItem } from "./canvas/elements/text"
 import { useEditor } from "@/contexts/editor-context"
 import { EditorToolbar } from "./canvas/editor-toolbar"
+import { ConnectionLayer } from "./canvas/connection-layer"
 
 const CANVAS_WIDTH = 1920
 const CANVAS_HEIGHT = 1080
@@ -439,6 +440,7 @@ export default function StepContent({
                 return null
             }
           })}
+          <ConnectionLayer step={step} />
       </Canvas>
 
       <p className="text-xs text-muted-foreground mt-2" style={{ visibility: selectedItem ? "visible" : "hidden" }}>

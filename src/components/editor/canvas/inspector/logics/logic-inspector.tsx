@@ -10,16 +10,15 @@ interface LogicInspectorProps {
   subtype?: string;
   step?: Step;
   flirt?: Flirt;
-  onUpdateStep?: () => void;
 }
 
-export function LogicInspector({ logicId, subtype, step, flirt, onUpdateStep }: LogicInspectorProps) {
+export function LogicInspector({ logicId, subtype, step, flirt }: LogicInspectorProps) {
   if (!logicId) return null;
 
   return (
     <div className="flex flex-col gap-2">
-      {(!subtype || subtype === "TRIGGER") && <TriggerInspector logicId={logicId} step={step} onUpdateStep={onUpdateStep} />}
-      {(!subtype || subtype === "JUMP") && <JumpInspector logicId={logicId} step={step} flirt={flirt} onUpdateStep={onUpdateStep} />}
+      {(!subtype || subtype === "TRIGGER") && <TriggerInspector logicId={logicId} step={step} />}
+      {(!subtype || subtype === "JUMP") && <JumpInspector logicId={logicId} step={step} flirt={flirt} />}
     </div>
   );
 }

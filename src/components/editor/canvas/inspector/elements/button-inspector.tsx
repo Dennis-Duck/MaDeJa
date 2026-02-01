@@ -9,17 +9,16 @@ import { useEditor } from "@/contexts/editor-context"
 interface ButtonInspectorProps {
   buttonId?: string
   step?: Step
-  onUpdateStep?: () => void
 }
 
-export function ButtonInspector({ buttonId, step, onUpdateStep }: ButtonInspectorProps) {
+export function ButtonInspector({ buttonId, step}: ButtonInspectorProps) {
   const { updateStep } = useEditor()
   const [text, setText] = useState("")
   const button = step?.elements.find((el) => el.id === buttonId && el.type === "BUTTON")
 
   useEffect(() => {
     if (button) {
-      setText(button.text)
+      setText(button.text ?? "")
     }
   }, [button])
 
@@ -37,8 +36,6 @@ export function ButtonInspector({ buttonId, step, onUpdateStep }: ButtonInspecto
       }),
       "update-button-text",
     )
-
-    onUpdateStep?.()
   }
 
   return (

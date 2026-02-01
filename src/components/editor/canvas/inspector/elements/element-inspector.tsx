@@ -8,10 +8,9 @@ interface ElementInspectorProps {
   elementId?: string;
   subtype?: string;
   step?: Step;
-  onUpdateStep?: () => void;
 }
 
-export function ElementInspector({ elementId, subtype, step, onUpdateStep }: ElementInspectorProps) {
+export function ElementInspector({ elementId, subtype, step }: ElementInspectorProps) {
   if (!elementId) return null;
 
   return (
@@ -20,7 +19,6 @@ export function ElementInspector({ elementId, subtype, step, onUpdateStep }: Ele
         <ButtonInspector
           buttonId={elementId}
           step={step}
-          onUpdateStep={onUpdateStep}
         />
       )}
 
@@ -28,7 +26,6 @@ export function ElementInspector({ elementId, subtype, step, onUpdateStep }: Ele
         <TextInspector
           textId={elementId}
           step={step}
-          onUpdateStep={onUpdateStep}
         />
       )}
     </div>

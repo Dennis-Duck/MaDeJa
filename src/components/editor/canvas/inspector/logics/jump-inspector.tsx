@@ -9,10 +9,9 @@ interface JumpInspectorProps {
   logicId?: string
   step?: Step
   flirt?: Flirt
-  onUpdateStep?: () => void
 }
 
-export function JumpInspector({ logicId, step, flirt, onUpdateStep }: JumpInspectorProps) {
+export function JumpInspector({ logicId, step, flirt}: JumpInspectorProps) {
   const { updateStep } = useEditor()
   const [parentLogicId, setParentLogicId] = useState<string>("")
   const [targetStepOrder, setTargetStepOrder] = useState<string>("")
@@ -68,8 +67,6 @@ export function JumpInspector({ logicId, step, flirt, onUpdateStep }: JumpInspec
       }),
       "update-jump",
     )
-
-    onUpdateStep?.()
   }
 
   return (

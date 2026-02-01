@@ -7,10 +7,9 @@ import { useEditor } from "@/contexts/editor-context"
 interface TriggerInspectorProps {
   logicId?: string
   step?: Step
-  onUpdateStep?: () => void
 }
 
-export function TriggerInspector({ logicId, step, onUpdateStep }: TriggerInspectorProps) {
+export function TriggerInspector({ logicId, step }: TriggerInspectorProps) {
   const { updateStep } = useEditor()
   const [triggerType, setTriggerType] = useState<"BUTTON_CLICK" | "STEP_LOAD" | "">("")
   const [targetButton, setTargetButton] = useState("")
@@ -49,8 +48,6 @@ export function TriggerInspector({ logicId, step, onUpdateStep }: TriggerInspect
       }),
       "update-trigger",
     )
-
-    onUpdateStep?.()
   }
 
   if (!logicId || !step) return null

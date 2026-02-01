@@ -8,10 +8,9 @@ import { useEditor } from "@/contexts/editor-context"
 interface TextInspectorProps {
   textId?: string
   step?: Step
-  onUpdateStep?: () => void
 }
 
-export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps) {
+export function TextInspector({ textId, step }: TextInspectorProps) {
   const { updateStep } = useEditor()
   const [segments, setSegments] = useState<TextSegment[]>([])
   const [newSegmentText, setNewSegmentText] = useState("")
@@ -49,8 +48,6 @@ export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps
       }),
       "add-text-segment",
     )
-
-    onUpdateStep?.()
   }
 
   const handleUpdateSegment = (segmentId: string) => {
@@ -68,8 +65,6 @@ export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps
       }),
       "update-text-segment",
     )
-
-    onUpdateStep?.()
   }
 
   const handleDeleteSegment = (segmentId: string) => {
@@ -83,8 +78,6 @@ export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps
       }),
       "delete-text-segment",
     )
-
-    onUpdateStep?.()
   }
 
   const startEdit = (segment: TextSegment) => {
@@ -105,8 +98,6 @@ export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps
       }),
       "toggle-auto-advance",
     )
-
-    onUpdateStep?.()
   }
 
   const handleAutoAdvanceDelayChange = (delay: number) => {
@@ -117,8 +108,6 @@ export function TextInspector({ textId, step, onUpdateStep }: TextInspectorProps
       }),
       "update-auto-advance-delay",
     )
-
-    onUpdateStep?.()
   }
 
   return (
