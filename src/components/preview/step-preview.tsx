@@ -1,13 +1,13 @@
 "use client"
 
-import type { Step } from "@/types/step"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useState, useRef, useEffect } from "react"
 import { TextItem } from "../editor/canvas/elements/text"
 
+import { useEditor } from "@/contexts/editor-context";
+
 interface StepPreviewProps {
-  step: Step
   flirtId: string
   stepId: string
 }
@@ -23,10 +23,11 @@ type ViewportPreset = keyof typeof VIEWPORT_PRESETS
 const CANVAS_WIDTH = 1920
 const CANVAS_HEIGHT = 1080
 
-export default function StepPreview({ step, flirtId, stepId }: StepPreviewProps) {
+export default function StepPreview({ flirtId, stepId }: StepPreviewProps) {
   const [viewportPreset, setViewportPreset] = useState<ViewportPreset>("desktop")
   const [scale, setScale] = useState(1)
   const containerRef = useRef<HTMLDivElement>(null)
+  const { step } = useEditor()
 
   const router = useRouter();
 
