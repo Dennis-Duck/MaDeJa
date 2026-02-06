@@ -3,7 +3,21 @@
 import { createContext, useContext, useReducer, useCallback, useEffect, type ReactNode } from "react"
 import type { Step } from "@/types/step"
 
-// Action types for undo tracking
+/**
+ * ============================================================
+ * LAYER 2 – STEP CONTENT STATE (EXISTING)
+ * ------------------------------------------------------------
+ * - Per-step editor state (elements, media, logics, etc.)
+ * - Per-step undo/redo (already implemented and working)
+ * - Persisted in localStorage per stepId
+ *
+ * This layer remains unchanged in behaviour – we only
+ * refactor the file to clearly separate it from the new
+ * "Layer 1 – Flirt structure state" further below.
+ * ============================================================
+ */
+
+// Action types for per-step undo tracking
 type EditorAction = {
   type: string
   previousState: Step
@@ -20,7 +34,13 @@ type StepEditorState = {
 
 // Multi-step context type
 interface EditorContextType {
-  // Get current step
+  /**
+   * ============================================================
+   * LAYER 2 – STEP CONTENT API (EXISTING)
+   * ============================================================
+   */
+
+  // Get current step (content layer)
   step: Step
 
   // Set current step (navigate between steps)
@@ -60,6 +80,50 @@ interface EditorContextType {
 
   // Sync order changes after deletion (updates all steps with new orders from DB)
   syncStepOrders: (updatedOrders: Array<{ id: string; order: number }>) => void
+
+  /**
+   * ============================================================
+   * LAYER 1 – FLIRT STRUCTURE API (NEW)
+   * ------------------------------------------------------------
+   * Light-weight description of the flirt:
+   * - Which steps exist
+   * - In which order
+   * - Which are newly created / deleted (not yet synced)
+   *
+   * This is deliberately small so we can:
+   * - Persist it cheaply in localStorage (per flirtId)
+   * - Add a separate "undo structure" without touching
+   *   the heavy step content / undo machinery.
+   * ============================================================
+   */
+
+  // Current flirt identifier for this editor session (if available)
+  flirtId: string | null
+
+  // Read-only structure state (lightweight, safe to inspect in UI)
+  flirtStructure: FlirtStructureState | null
+
+  // Convenience getters for structure parts
+  structureStepOrder: string[]
+  structureDeletedStepIds: string[]
+  structureNewStepIds: string[]
+
+  // Mutations on flirt structure (do NOT hit the database)
+  createStepInStructure: (options: { stepId: string; isNew?: boolean; insertAfterId?: string | null }) => void
+  deleteStepInStructure: (stepId: string) => void
+  reorderStepsInStructure: (stepOrder: string[]) => void
+
+  // Undo/redo for flirt structure (separate from step content undo/redo)
+  canUndoStructure: boolean
+  canRedoStructure: boolean
+  undoStructure: () => void
+  redoStructure: () => void
+
+  // Initialize / reconcile flirt structure from DB steps (safe to call repeatedly)
+  initFlirtStructureFromDb: (payload: {
+    flirtId: string
+    dbSteps: Array<{ id: string; order: number }>
+  }) => void
 }
 
 const EditorContext = createContext<EditorContextType | null>(null)
@@ -81,6 +145,33 @@ const MAX_UNDO_STACK = 50
 const UNDO_STACK_STORAGE_KEY = "editor-undo-stacks"
 const REDO_STACK_STORAGE_KEY = "editor-redo-stacks"
 const STEP_STATE_STORAGE_KEY = "editor-step-states"
+
+/**
+ * ============================================================
+ * LAYER 1 – FLIRT STRUCTURE STATE (NEW)
+ * ============================================================
+ */
+
+// Single snapshot of the light flirt structure (no undo history inside)
+type FlirtStructureSnapshot = {
+  // All known step ids for this flirt (DB + temporary)
+  stepIds: string[]
+  // Ordered list of step ids (this is what the UI should use)
+  stepOrder: string[]
+  // Steps marked as deleted but not yet persisted to the DB
+  deletedStepIds: string[]
+  // Steps created in this session and not yet persisted
+  newStepIds: string[]
+}
+
+// Full flirt structure state including its own undo/redo history
+export type FlirtStructureState = FlirtStructureSnapshot & {
+  undoStack: FlirtStructureSnapshot[]
+  redoStack: FlirtStructureSnapshot[]
+}
+
+const FLIRT_STRUCTURE_STORAGE_KEY = "editor-flirt-structure"
+const MAX_STRUCTURE_UNDO_STACK = 100
 
 // Default empty step
 const EMPTY_STEP: Step = {
@@ -158,6 +249,78 @@ function loadStepState(stepId: string, fallback: Step): Step {
   }
 }
 
+/**
+ * ============================================================
+ * LAYER 1 – FLIRT STRUCTURE LOCALSTORAGE HELPERS (NEW)
+ * ============================================================
+ */
+
+// Load flirt structure for a given flirtId from localStorage.
+// If nothing exists yet, fall back to the provided initial snapshot.
+function loadFlirtStructureFromStorage(
+  flirtId: string,
+  initialSnapshot: FlirtStructureSnapshot
+): FlirtStructureState {
+  try {
+    if (typeof window === "undefined") {
+      return {
+        ...initialSnapshot,
+        undoStack: [],
+        redoStack: [],
+      }
+    }
+
+    const stored = localStorage.getItem(FLIRT_STRUCTURE_STORAGE_KEY)
+    if (!stored) {
+      return {
+        ...initialSnapshot,
+        undoStack: [],
+        redoStack: [],
+      }
+    }
+
+    const allStructures = JSON.parse(stored) as Record<string, FlirtStructureState>
+    const existing = allStructures[flirtId]
+
+    if (!existing) {
+      return {
+        ...initialSnapshot,
+        undoStack: [],
+        redoStack: [],
+      }
+    }
+
+    return existing
+  } catch {
+    // If anything goes wrong, fall back to a clean initial state
+    return {
+      ...initialSnapshot,
+      undoStack: [],
+      redoStack: [],
+    }
+  }
+}
+
+// Save flirt structure for a given flirtId to localStorage
+function saveFlirtStructureToStorage(flirtId: string, structure: FlirtStructureState | null) {
+  try {
+    if (typeof window === "undefined") return
+
+    const stored = localStorage.getItem(FLIRT_STRUCTURE_STORAGE_KEY) || "{}"
+    const allStructures = JSON.parse(stored) as Record<string, FlirtStructureState>
+
+    if (structure) {
+      allStructures[flirtId] = structure
+    } else {
+      delete allStructures[flirtId]
+    }
+
+    localStorage.setItem(FLIRT_STRUCTURE_STORAGE_KEY, JSON.stringify(allStructures))
+  } catch {
+    // Silently fail if localStorage is not available
+  }
+}
+
 // Helper to save step state to localStorage
 function saveStepStateToStorage(stepId: string, step: Step) {
   try {
@@ -222,6 +385,19 @@ type EditorState = {
   currentStepId: string
   // Global saving state
   isSaving: boolean
+
+  /**
+   * ============================================================
+   * LAYER 1 – FLIRT STRUCTURE STATE (NEW)
+   * ------------------------------------------------------------
+   * This sits alongside the heavy step content state.
+   * It is intentionally light and safe to persist as-is.
+   * ============================================================
+   */
+  // Current flirt id (if known)
+  flirtId: string | null
+  // Light-weight description of steps for this flirt
+  flirtStructure: FlirtStructureState | null
 }
 
 // Reducer action types
@@ -237,6 +413,20 @@ type EditorReducerAction =
   | { type: "SAVE_ERROR" }
   | { type: "REMOVE_STEP"; stepId: string }
   | { type: "SYNC_STEP_ORDERS"; updatedOrders: Array<{ id: string; order: number }> }
+  // Flirt structure – init + structural mutations
+  | { type: "INIT_FLIRT_STRUCTURE"; flirtId: string; structure: FlirtStructureState }
+  | {
+      type: "STRUCTURE_CREATE_STEP"
+      payload: { stepId: string; isNew?: boolean; insertAfterId?: string | null }
+    }
+  | { type: "STRUCTURE_DELETE_STEP"; payload: { stepId: string } }
+  | { type: "STRUCTURE_REORDER_STEPS"; payload: { stepOrder: string[] } }
+  | { type: "STRUCTURE_UNDO" }
+  | { type: "STRUCTURE_REDO" }
+  | {
+      type: "STRUCTURE_INIT_FROM_DB"
+      payload: { flirtId: string; dbSteps: Array<{ id: string; order: number }> }
+    }
 
 // Reducer function - all state updates are atomic
 function editorReducer(state: EditorState, action: EditorReducerAction): EditorState {
@@ -471,6 +661,246 @@ function editorReducer(state: EditorState, action: EditorReducerAction): EditorS
       }
     }
 
+    /**
+     * ============================================================
+     * LAYER 1 – FLIRT STRUCTURE REDUCER CASES (NEW)
+     * ============================================================
+     */
+
+    case "INIT_FLIRT_STRUCTURE": {
+      return {
+        ...state,
+        flirtId: action.flirtId,
+        flirtStructure: action.structure,
+      }
+    }
+
+    case "STRUCTURE_CREATE_STEP": {
+      if (!state.flirtStructure) return state
+
+      const { stepId, isNew = true, insertAfterId = null } = action.payload
+      if (state.flirtStructure.stepIds.includes(stepId)) {
+        // Already known – do not duplicate
+        return state
+      }
+
+      const snapshot: FlirtStructureSnapshot = {
+        stepIds: state.flirtStructure.stepIds,
+        stepOrder: state.flirtStructure.stepOrder,
+        deletedStepIds: state.flirtStructure.deletedStepIds,
+        newStepIds: state.flirtStructure.newStepIds,
+      }
+
+      const nextUndoStack = [...state.flirtStructure.undoStack, snapshot].slice(-MAX_STRUCTURE_UNDO_STACK)
+
+      const stepIds = [...state.flirtStructure.stepIds, stepId]
+
+      let stepOrder: string[]
+      if (insertAfterId) {
+        const index = state.flirtStructure.stepOrder.indexOf(insertAfterId)
+        if (index === -1) {
+          stepOrder = [...state.flirtStructure.stepOrder, stepId]
+        } else {
+          stepOrder = [
+            ...state.flirtStructure.stepOrder.slice(0, index + 1),
+            stepId,
+            ...state.flirtStructure.stepOrder.slice(index + 1),
+          ]
+        }
+      } else {
+        // Default: append at the end
+        stepOrder = [...state.flirtStructure.stepOrder, stepId]
+      }
+
+      const deletedStepIds = state.flirtStructure.deletedStepIds.filter(id => id !== stepId)
+
+      const newStepIds = isNew
+        ? [...new Set([...state.flirtStructure.newStepIds, stepId])]
+        : state.flirtStructure.newStepIds.filter(id => id !== stepId)
+
+      return {
+        ...state,
+        flirtStructure: {
+          stepIds,
+          stepOrder,
+          deletedStepIds,
+          newStepIds,
+          undoStack: nextUndoStack,
+          redoStack: [],
+        },
+      }
+    }
+
+    case "STRUCTURE_DELETE_STEP": {
+      if (!state.flirtStructure) return state
+
+      const { stepId } = action.payload
+      if (!state.flirtStructure.stepIds.includes(stepId)) return state
+
+      const snapshot: FlirtStructureSnapshot = {
+        stepIds: state.flirtStructure.stepIds,
+        stepOrder: state.flirtStructure.stepOrder,
+        deletedStepIds: state.flirtStructure.deletedStepIds,
+        newStepIds: state.flirtStructure.newStepIds,
+      }
+
+      const nextUndoStack = [...state.flirtStructure.undoStack, snapshot].slice(-MAX_STRUCTURE_UNDO_STACK)
+
+      const stepIds = state.flirtStructure.stepIds.filter(id => id !== stepId)
+      const stepOrder = state.flirtStructure.stepOrder.filter(id => id !== stepId)
+
+      const deletedStepIds = [...new Set([...state.flirtStructure.deletedStepIds, stepId])]
+      const newStepIds = state.flirtStructure.newStepIds.filter(id => id !== stepId)
+
+      return {
+        ...state,
+        flirtStructure: {
+          stepIds,
+          stepOrder,
+          deletedStepIds,
+          newStepIds,
+          undoStack: nextUndoStack,
+          redoStack: [],
+        },
+      }
+    }
+
+    case "STRUCTURE_REORDER_STEPS": {
+      if (!state.flirtStructure) return state
+
+      const { stepOrder } = action.payload
+
+      // If the order is identical, skip
+      if (JSON.stringify(stepOrder) === JSON.stringify(state.flirtStructure.stepOrder)) {
+        return state
+      }
+
+      const snapshot: FlirtStructureSnapshot = {
+        stepIds: state.flirtStructure.stepIds,
+        stepOrder: state.flirtStructure.stepOrder,
+        deletedStepIds: state.flirtStructure.deletedStepIds,
+        newStepIds: state.flirtStructure.newStepIds,
+      }
+
+      const nextUndoStack = [...state.flirtStructure.undoStack, snapshot].slice(-MAX_STRUCTURE_UNDO_STACK)
+
+      return {
+        ...state,
+        flirtStructure: {
+          ...state.flirtStructure,
+          stepOrder,
+          undoStack: nextUndoStack,
+          redoStack: [],
+        },
+      }
+    }
+
+    case "STRUCTURE_UNDO": {
+      if (!state.flirtStructure || state.flirtStructure.undoStack.length === 0) return state
+
+      const previous = state.flirtStructure.undoStack[state.flirtStructure.undoStack.length - 1]
+      const remainingUndo = state.flirtStructure.undoStack.slice(0, -1)
+
+      const currentSnapshot: FlirtStructureSnapshot = {
+        stepIds: state.flirtStructure.stepIds,
+        stepOrder: state.flirtStructure.stepOrder,
+        deletedStepIds: state.flirtStructure.deletedStepIds,
+        newStepIds: state.flirtStructure.newStepIds,
+      }
+
+      const nextRedoStack = [...state.flirtStructure.redoStack, currentSnapshot].slice(-MAX_STRUCTURE_UNDO_STACK)
+
+      return {
+        ...state,
+        flirtStructure: {
+          stepIds: previous.stepIds,
+          stepOrder: previous.stepOrder,
+          deletedStepIds: previous.deletedStepIds,
+          newStepIds: previous.newStepIds,
+          undoStack: remainingUndo,
+          redoStack: nextRedoStack,
+        },
+      }
+    }
+
+    case "STRUCTURE_REDO": {
+      if (!state.flirtStructure || state.flirtStructure.redoStack.length === 0) return state
+
+      const next = state.flirtStructure.redoStack[state.flirtStructure.redoStack.length - 1]
+      const remainingRedo = state.flirtStructure.redoStack.slice(0, -1)
+
+      const currentSnapshot: FlirtStructureSnapshot = {
+        stepIds: state.flirtStructure.stepIds,
+        stepOrder: state.flirtStructure.stepOrder,
+        deletedStepIds: state.flirtStructure.deletedStepIds,
+        newStepIds: state.flirtStructure.newStepIds,
+      }
+
+      const nextUndoStack = [...state.flirtStructure.undoStack, currentSnapshot].slice(-MAX_STRUCTURE_UNDO_STACK)
+
+      return {
+        ...state,
+        flirtStructure: {
+          stepIds: next.stepIds,
+          stepOrder: next.stepOrder,
+          deletedStepIds: next.deletedStepIds,
+          newStepIds: next.newStepIds,
+          undoStack: nextUndoStack,
+          redoStack: remainingRedo,
+        },
+      }
+    }
+
+    case "STRUCTURE_INIT_FROM_DB": {
+      const { flirtId, dbSteps } = action.payload
+
+      // Normalize the DB order
+      const dbOrderedIds = [...dbSteps]
+        .sort((a, b) => a.order - b.order)
+        .map(s => s.id)
+
+      const baseSnapshot: FlirtStructureSnapshot = {
+        stepIds: dbOrderedIds,
+        stepOrder: dbOrderedIds,
+        deletedStepIds: [],
+        newStepIds: [],
+      }
+
+      // If we have no structure yet, load from storage (or fall back to DB)
+      if (!state.flirtStructure || state.flirtId !== flirtId) {
+        const loaded = loadFlirtStructureFromStorage(flirtId, baseSnapshot)
+        return {
+          ...state,
+          flirtId,
+          flirtStructure: loaded,
+        }
+      }
+
+      // Reconcile: ensure all DB steps exist in the structure and are in DB order,
+      // but keep temp/new steps appended (and keep deletion markers).
+      const existing = state.flirtStructure
+      const existingTempIds = existing.stepIds.filter(id => !dbOrderedIds.includes(id))
+
+      const mergedStepIds = [...dbOrderedIds, ...existingTempIds]
+
+      // If current stepOrder is empty, or missing DB steps, rebuild it:
+      const hasAllDbStepsInOrder = dbOrderedIds.every(id => existing.stepOrder.includes(id))
+      const nextStepOrder =
+        existing.stepOrder.length === 0 || !hasAllDbStepsInOrder
+          ? [...dbOrderedIds, ...existingTempIds]
+          : existing.stepOrder
+
+      return {
+        ...state,
+        flirtId,
+        flirtStructure: {
+          ...existing,
+          stepIds: mergedStepIds,
+          stepOrder: nextStepOrder,
+        },
+      }
+    }
+
     default:
       return state
   }
@@ -482,14 +912,35 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
     steps: {},
     currentStepId: initialStep?.id || "",
     isSaving: false,
+    flirtId: initialStep?.flirtId || null,
+    flirtStructure: null,
   })
 
   // Load state from localStorage after hydration (client-side only)
   // Initialize first step if provided
   useEffect(() => {
-    if (initialStep) {
-      dispatch({ type: "INITIALIZE_STEP", step: initialStep })
+    if (!initialStep) return
+
+    // Layer 2 – initialise step content + its undo/redo state
+    dispatch({ type: "INITIALIZE_STEP", step: initialStep })
+
+    // Layer 1 – initialise flirt structure (READ-ONLY from DB + temp)
+    // For now we only know a single initial step from the server.
+    // Later we can extend this to accept a full structure payload.
+    const baseSnapshot: FlirtStructureSnapshot = {
+      stepIds: [initialStep.id],
+      stepOrder: [initialStep.id],
+      deletedStepIds: [],
+      newStepIds: [],
     }
+
+    const structure = loadFlirtStructureFromStorage(initialStep.flirtId, baseSnapshot)
+
+    dispatch({
+      type: "INIT_FLIRT_STRUCTURE",
+      flirtId: initialStep.flirtId,
+      structure,
+    })
   }, [initialStep])
 
   // Get current step state
@@ -517,6 +968,12 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
       saveRedoStackToStorage(stepId, stepState.redoStack)
     })
   }, [state.steps])
+
+  // Persist flirt structure to localStorage whenever it changes
+  useEffect(() => {
+    if (!state.flirtId) return
+    saveFlirtStructureToStorage(state.flirtId, state.flirtStructure)
+  }, [state.flirtId, state.flirtStructure])
 
   // Set current step (navigation between steps)
   const setStep = useCallback((newStep: Step) => {
@@ -568,6 +1025,60 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
   const syncStepOrders = useCallback((updatedOrders: Array<{ id: string; order: number }>) => {
     dispatch({ type: "SYNC_STEP_ORDERS", updatedOrders })
   }, [])
+
+  /**
+   * ============================================================
+   * LAYER 1 – FLIRT STRUCTURE DISPATCH HELPERS (NEW)
+   * ------------------------------------------------------------
+   * These functions only manipulate the light structure state:
+   * - No network calls
+   * - No database writes
+   * - Safe to call freely from the UI
+   *
+   * Actual persistence of step order / creation / deletion to
+   * the database should happen later via a dedicated "Save"
+   * routine that reads from this structure layer.
+   * ============================================================
+   */
+
+  const createStepInStructure = useCallback(
+    (options: { stepId: string; isNew?: boolean; insertAfterId?: string | null }) => {
+      dispatch({ type: "STRUCTURE_CREATE_STEP", payload: options })
+    },
+    []
+  )
+
+  const deleteStepInStructure = useCallback((stepId: string) => {
+    dispatch({ type: "STRUCTURE_DELETE_STEP", payload: { stepId } })
+  }, [])
+
+  const reorderStepsInStructure = useCallback((stepOrder: string[]) => {
+    dispatch({ type: "STRUCTURE_REORDER_STEPS", payload: { stepOrder } })
+  }, [])
+
+  const undoStructure = useCallback(() => {
+    dispatch({ type: "STRUCTURE_UNDO" })
+  }, [])
+
+  const redoStructure = useCallback(() => {
+    dispatch({ type: "STRUCTURE_REDO" })
+  }, [])
+
+  const initFlirtStructureFromDb = useCallback(
+    (payload: { flirtId: string; dbSteps: Array<{ id: string; order: number }> }) => {
+      dispatch({ type: "STRUCTURE_INIT_FROM_DB", payload })
+    },
+    []
+  )
+
+  const flirtStructure = state.flirtStructure
+
+  const structureStepOrder = flirtStructure?.stepOrder ?? []
+  const structureDeletedStepIds = flirtStructure?.deletedStepIds ?? []
+  const structureNewStepIds = flirtStructure?.newStepIds ?? []
+
+  const canUndoStructure = !!flirtStructure && flirtStructure.undoStack.length > 0
+  const canRedoStructure = !!flirtStructure && flirtStructure.redoStack.length > 0
 
   // Global save: save ALL dirty steps in parallel
   const save = useCallback(async (): Promise<boolean> => {
@@ -638,6 +1149,20 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
         getStepState,
         removeStep,
         syncStepOrders,
+        // Layer 1 – flirt structure
+        flirtId: state.flirtId,
+        flirtStructure,
+        structureStepOrder,
+        structureDeletedStepIds,
+        structureNewStepIds,
+        createStepInStructure,
+        deleteStepInStructure,
+        reorderStepsInStructure,
+        canUndoStructure,
+        canRedoStructure,
+        undoStructure,
+        redoStructure,
+        initFlirtStructureFromDb,
       }}
     >
       {children}

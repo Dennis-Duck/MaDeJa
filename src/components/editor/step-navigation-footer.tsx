@@ -1,5 +1,7 @@
 "use client";
 
+import { useEditor } from "@/contexts/editor-context";
+
 interface Props {
   stepOrder: number;
   isLast: boolean;
@@ -19,6 +21,10 @@ export default function StepNavigationFooter({
   onHome,
   onPreview,
 }: Props) {
+  // Use the LIGHT flirt-structure undo from the editor context (Layer 1)
+  // This is meant for undoing step-level operations like create/delete/reorder,
+  // separate from the heavy per-step content undo in the toolbar.
+  const { canUndoStructure, undoStructure } = useEditor();
 
   return (
     <div className="flex gap-2 flex-wrap">
@@ -61,6 +67,20 @@ export default function StepNavigationFooter({
         className="px-3 py-1 rounded bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] hover:text-[var(--foreground)] transition-colors duration-150"
       >
         Home
+      </button>
+
+      {/* Undo (flirt structure: step create/delete/reorder) */}
+      <button
+        onClick={undoStructure}
+        disabled={!canUndoStructure}
+        className="ml-auto px-3 py-1 rounded bg-[var(--background-secondary)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--hover-bg)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 flex items-center gap-2"
+        title={
+          canUndoStructure
+            ? "Undo last structural change (step created/deleted/reordered)"
+            : "Nothing to undo on flirt structure"
+        }
+      >
+        <span>Undo</span>
       </button>
     </div>
   );

@@ -36,6 +36,7 @@ interface CanvasItemIdentifier {
 
 interface StepContentProps {
   totalSteps: number
+  stepNumber?: number
   flirt?: Flirt
   selectedItem?: CanvasItemIdentifier | null
   onSelectedItemChange?: (item: CanvasItemIdentifier | null) => void
@@ -43,6 +44,7 @@ interface StepContentProps {
 
 export default function StepContent({
   totalSteps,
+  stepNumber,
   selectedItem: externalSelectedItem,
   onSelectedItemChange,
 }: StepContentProps) {
@@ -212,7 +214,7 @@ export default function StepContent({
     <div className="relative">
       <div className="flex items-start justify-between mb-4">
         <p className="text-sm text-muted-foreground mb-4">
-          Step {step.order}/{totalSteps}
+          Step {(stepNumber ?? step.order)}/{totalSteps}
         </p>
 
         <EditorToolbar />
