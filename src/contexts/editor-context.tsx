@@ -962,10 +962,16 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
   const currentStepState = state.steps[state.currentStepId]
   const step = currentStepState?.step || initialStep || EMPTY_STEP
 
-  // Computed: global isDirty (ANY step has changes)
-  const isDirty = Object.values(state.steps).some(
-    stepState => JSON.stringify(stepState.step) !== JSON.stringify(stepState.originalStep)
-  )
+  // Computed: global isDirty (ANY step has changes OR structure has unsaved changes)
+  const hasStructureChanges =
+    !!state.flirtStructure &&
+    (state.flirtStructure.newStepIds.length > 0 || state.flirtStructure.deletedStepIds.length > 0)
+
+  const isDirty =
+    hasStructureChanges ||
+    Object.values(state.steps).some(
+      stepState => JSON.stringify(stepState.step) !== JSON.stringify(stepState.originalStep)
+    )
 
   // Computed: global canUndo (current step)
   const canUndo = currentStepState?.undoStack.length > 0 || false

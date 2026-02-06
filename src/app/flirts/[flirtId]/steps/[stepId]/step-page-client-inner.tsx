@@ -43,6 +43,22 @@ export default function StepPageClientInner({
     initFlirtStructureFromDb,
     deleteStepInStructure,
   } = useEditor();
+
+  /**
+   * Watch the structure layer for undo/redo changes.
+   * If the current step disappears from the stepOrder (e.g. because the user
+   * undid a "create step"), navigate to the last step in the order.
+   */
+  useEffect(() => {
+    if (structureStepOrder.length === 0) return;
+    if (structureStepOrder.includes(step.id)) return;
+
+    // Current step is no longer in the structure order – navigate away
+    const lastStepId = structureStepOrder[structureStepOrder.length - 1];
+    if (lastStepId) {
+      router.replace(`/flirts/${initialFlirtId}/steps/${lastStepId}`);
+    }
+  }, [structureStepOrder, step.id, initialFlirtId, router]);
   // NOTE:
   // We keep this as a fallback for DB-only sessions, but the UI should
   // prefer the light structure layer (Layer 1) whenever possible.

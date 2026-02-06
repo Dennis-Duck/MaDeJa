@@ -24,7 +24,8 @@ export default function StepNavigationFooter({
   // Use the LIGHT flirt-structure undo from the editor context (Layer 1)
   // This is meant for undoing step-level operations like create/delete/reorder,
   // separate from the heavy per-step content undo in the toolbar.
-  const { canUndoStructure, undoStructure } = useEditor();
+  const { canUndoStructure, undoStructure, flirtStructure } = useEditor();
+  const structureUndoCount = flirtStructure?.undoStack.length ?? 0;
 
   return (
     <div className="flex gap-2 flex-wrap">
@@ -81,6 +82,11 @@ export default function StepNavigationFooter({
         }
       >
         <span>Undo</span>
+        {canUndoStructure && (
+          <span className="text-xs bg-[var(--accent)] text-[var(--foreground)] px-1.5 py-0.5 rounded-full">
+            {structureUndoCount}
+          </span>
+        )}
       </button>
     </div>
   );
