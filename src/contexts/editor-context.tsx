@@ -427,6 +427,7 @@ type EditorReducerAction =
       type: "STRUCTURE_INIT_FROM_DB"
       payload: { flirtId: string; dbSteps: Array<{ id: string; order: number }> }
     }
+  | { type: "STRUCTURE_COMMIT" }
 
 // Reducer function - all state updates are atomic
 function editorReducer(state: EditorState, action: EditorReducerAction): EditorState {
@@ -901,6 +902,20 @@ function editorReducer(state: EditorState, action: EditorReducerAction): EditorS
       }
     }
 
+    case "STRUCTURE_COMMIT": {
+      if (!state.flirtStructure) return state
+
+      return {
+        ...state,
+        flirtStructure: {
+          ...state.flirtStructure,
+          deletedStepIds: [],
+          newStepIds: [],
+          // Commit is a logical boundary; we keep undo/redo history
+        },
+      }
+    }
+
     default:
       return state
   }
@@ -1082,11 +1097,44 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
 
   // Global save: save ALL dirty steps in parallel
   const save = useCallback(async (): Promise<boolean> => {
-    if (!isDirty) return true
-
     dispatch({ type: "SAVE_START" })
 
     try {
+      // 1) Persist flirt structure (step order + temp / deleted steps) if we have it
+      if (state.flirtId && flirtStructure) {
+        const structurePayload = {
+          stepOrder: flirtStructure.stepOrder,
+          deletedStepIds: flirtStructure.deletedStepIds,
+          newStepIds: flirtStructure.newStepIds,
+        }
+
+        const res = await fetch(`/api/flirts/${state.flirtId}/structure`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(structurePayload),
+        })
+
+        if (!res.ok) {
+          throw new Error("Failed to save flirt structure")
+        }
+
+        const data = await res.json()
+        const updatedOrders = (data?.updatedSteps ?? []) as Array<{ id: string; order: number }>
+
+        // Align local step.order / originalStep.order with DB, and clear new/deleted flags
+        if (updatedOrders.length > 0) {
+          dispatch({ type: "SYNC_STEP_ORDERS", updatedOrders })
+        }
+
+        dispatch({ type: "STRUCTURE_COMMIT" })
+      }
+
+      // 2) Persist all dirty step contents (elements, media, logics, ...)
+      if (!isDirty) {
+        dispatch({ type: "SAVE_SUCCESS", savedSteps: [] })
+        return true
+      }
+
       // Get all dirty steps
       const dirtySteps = Object.values(state.steps).filter(
         stepState => JSON.stringify(stepState.step) !== JSON.stringify(stepState.originalStep)
