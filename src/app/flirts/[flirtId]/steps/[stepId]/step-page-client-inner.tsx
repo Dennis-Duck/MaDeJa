@@ -78,9 +78,16 @@ export default function StepPageClientInner({
    * ============================================================
    */
   const structureHasOrder = structureStepOrder.length > 0;
-  const currentIndex =
-    structureHasOrder && structureStepOrder.includes(step.id)
-      ? structureStepOrder.indexOf(step.id) + 1
+  const stepInOrder = structureHasOrder && structureStepOrder.includes(step.id);
+
+  // When the current step was removed from the order (e.g. after undo),
+  // immediately show the index of the last step in the order (where we are
+  // about to navigate). This avoids the brief "3/2" flash while
+  // router.replace is still in-flight.
+  const currentIndex = stepInOrder
+    ? structureStepOrder.indexOf(step.id) + 1
+    : structureHasOrder
+      ? structureStepOrder.length   // show last position (navigation target)
       : step.order || 1;
   const derivedTotalSteps = structureHasOrder ? structureStepOrder.length : totalStepsState;
   const isLastStep = currentIndex >= derivedTotalSteps;

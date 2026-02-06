@@ -598,7 +598,7 @@ function editorReducer(state: EditorState, action: EditorReducerAction): EditorS
 
       // Update originalStep for all saved steps, but KEEP undo stacks
       for (const savedStep of action.savedSteps) {
-        if (newSteps[savedStep.id]) {
+        if (savedStep && newSteps[savedStep.id]) {
           newSteps[savedStep.id] = {
             ...newSteps[savedStep.id],
             step: savedStep,
@@ -877,41 +877,59 @@ function editorReducer(state: EditorState, action: EditorReducerAction): EditorS
         }
       }
 
-      // Reconcile: ensure all DB steps exist in the structure and are in DB order,
-      // but keep temp/new steps appended (and keep deletion markers).
+      // We already have a structure for this flirt.
+      // The current in-memory structure is authoritative (it may have been
+      // modified by undo/redo or other user actions). We do NOT blindly
+      // merge DB steps back in because that would undo any structural
+      // undo operations the user just performed.
+      //
+      // Only if the structure's stepOrder is completely empty (fresh init)
+      // do we fall back to the DB order.
       const existing = state.flirtStructure
-      const existingTempIds = existing.stepIds.filter(id => !dbOrderedIds.includes(id))
 
-      const mergedStepIds = [...dbOrderedIds, ...existingTempIds]
-
-      // If current stepOrder is empty, or missing DB steps, rebuild it:
-      const hasAllDbStepsInOrder = dbOrderedIds.every(id => existing.stepOrder.includes(id))
-      const nextStepOrder =
-        existing.stepOrder.length === 0 || !hasAllDbStepsInOrder
-          ? [...dbOrderedIds, ...existingTempIds]
-          : existing.stepOrder
-
-      return {
-        ...state,
-        flirtId,
-        flirtStructure: {
-          ...existing,
-          stepIds: mergedStepIds,
-          stepOrder: nextStepOrder,
-        },
+      if (existing.stepOrder.length === 0) {
+        // Empty structure – seed from DB
+        return {
+          ...state,
+          flirtId,
+          flirtStructure: {
+            ...existing,
+            stepIds: dbOrderedIds,
+            stepOrder: dbOrderedIds,
+          },
+        }
       }
+
+      // Otherwise keep the current structure untouched – it is the source
+      // of truth until the next save.
+      return state
     }
 
     case "STRUCTURE_COMMIT": {
       if (!state.flirtStructure) return state
 
+      // Remove deleted steps from the in-memory steps map – they no longer
+      // exist in the DB after the structure save.
+      const cleanedSteps = { ...state.steps }
+      for (const deletedId of state.flirtStructure.deletedStepIds) {
+        delete cleanedSteps[deletedId]
+      }
+
       return {
         ...state,
+        steps: cleanedSteps,
         flirtStructure: {
           ...state.flirtStructure,
           deletedStepIds: [],
           newStepIds: [],
-          // Commit is a logical boundary; we keep undo/redo history
+          // Commit is a logical boundary: the DB state has changed so
+          // old undo snapshots (which reference pre-save newStepIds /
+          // deletedStepIds / stepOrder) are no longer valid.
+          // Clearing the stacks prevents impossible reconciliation bugs
+          // where undoing after a save would restore a stale snapshot
+          // that conflicts with the now-authoritative DB state.
+          undoStack: [],
+          redoStack: [],
         },
       }
     }
@@ -1141,14 +1159,19 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
         return true
       }
 
-      // Get all dirty steps
+      // Get all dirty steps, excluding any steps that were just deleted from
+      // the structure (they no longer exist in the DB after the structure save).
+      const deletedIds = new Set(flirtStructure?.deletedStepIds ?? [])
       const dirtySteps = Object.values(state.steps).filter(
-        stepState => JSON.stringify(stepState.step) !== JSON.stringify(stepState.originalStep)
+        stepState =>
+          !deletedIds.has(stepState.step.id) &&
+          JSON.stringify(stepState.step) !== JSON.stringify(stepState.originalStep)
       )
 
       if (dirtySteps.length === 0) {
-        dispatch({ type: "SAVE_ERROR" })
-        return false
+        // No step content changes – structure was already saved above
+        dispatch({ type: "SAVE_SUCCESS", savedSteps: [] })
+        return true
       }
 
       // Save all dirty steps in parallel
@@ -1181,7 +1204,7 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
       dispatch({ type: "SAVE_ERROR" })
       return false
     }
-  }, [state.steps, isDirty])
+  }, [state.steps, state.flirtId, flirtStructure, isDirty])
 
   return (
     <EditorContext.Provider
