@@ -985,10 +985,16 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
     !!state.flirtStructure &&
     (state.flirtStructure.newStepIds.length > 0 || state.flirtStructure.deletedStepIds.length > 0)
 
+  const activeStepIds = new Set(state.flirtStructure?.stepOrder ?? [])
+  const deletedIds = new Set(state.flirtStructure?.deletedStepIds ?? [])
+
   const isDirty =
     hasStructureChanges ||
     Object.values(state.steps).some(
-      stepState => JSON.stringify(stepState.step) !== JSON.stringify(stepState.originalStep)
+      stepState =>
+        !deletedIds.has(stepState.step.id) &&
+        (activeStepIds.size === 0 || activeStepIds.has(stepState.step.id)) &&
+        JSON.stringify(stepState.step) !== JSON.stringify(stepState.originalStep)
     )
 
   // Computed: global canUndo (current step)
@@ -1021,9 +1027,12 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
   }, [])
 
   // Update current step with undo tracking
-  const updateStep = useCallback((updater: (prev: Step) => Step, actionType = "update") => {
-    dispatch({ type: "UPDATE_STEP", stepId: state.currentStepId, updater, actionType })
-  }, [state.currentStepId])
+  const updateStep = useCallback(
+    (updater: (prev: Step) => Step, actionType = "update") => {
+      dispatch({ type: "UPDATE_STEP", stepId: state.currentStepId, updater, actionType })
+    },
+    [state.currentStepId]
+  )
 
   // Undo in current step
   const undo = useCallback(() => {
@@ -1041,16 +1050,22 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
   }, [])
 
   // Get step state for a specific step
-  const getStepState = useCallback((stepId: string) => {
-    return state.steps[stepId]
-  }, [state.steps])
+  const getStepState = useCallback(
+    (stepId: string) => {
+      return state.steps[stepId]
+    },
+    [state.steps]
+  )
 
   // Check if a specific step is dirty
-  const isStepDirty = useCallback((stepId: string) => {
-    const stepState = state.steps[stepId]
-    if (!stepState) return false
-    return JSON.stringify(stepState.step) !== JSON.stringify(stepState.originalStep)
-  }, [state.steps])
+  const isStepDirty = useCallback(
+    (stepId: string) => {
+      const stepState = state.steps[stepId]
+      if (!stepState) return false
+      return JSON.stringify(stepState.step) !== JSON.stringify(stepState.originalStep)
+    },
+    [state.steps]
+  )
 
   // Remove a step (cleanup in-memory + localStorage)
   const removeStep = useCallback((stepId: string) => {
@@ -1154,17 +1169,15 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
       }
 
       // 2) Persist all dirty step contents (elements, media, logics, ...)
-      if (!isDirty) {
-        dispatch({ type: "SAVE_SUCCESS", savedSteps: [] })
-        return true
-      }
-
       // Get all dirty steps, excluding any steps that were just deleted from
-      // the structure (they no longer exist in the DB after the structure save).
-      const deletedIds = new Set(flirtStructure?.deletedStepIds ?? [])
+      // the structure (they no longer exist in the DB after the structure save)
+      // and any steps that are not part of the current structure order.
+      const currentDeletedIds = new Set(flirtStructure?.deletedStepIds ?? [])
+      const currentActiveStepIds = new Set(flirtStructure?.stepOrder ?? [])
       const dirtySteps = Object.values(state.steps).filter(
         stepState =>
-          !deletedIds.has(stepState.step.id) &&
+          !currentDeletedIds.has(stepState.step.id) &&
+          (currentActiveStepIds.size === 0 || currentActiveStepIds.has(stepState.step.id)) &&
           JSON.stringify(stepState.step) !== JSON.stringify(stepState.originalStep)
       )
 
@@ -1174,21 +1187,26 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
         return true
       }
 
-      // Save all dirty steps in parallel
-      const results = await Promise.all(
-        dirtySteps.map(stepState =>
-          fetch(`/api/step/${stepState.step.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(stepState.step),
-          })
-            .then(res => {
-              if (!res.ok) throw new Error(`Failed to save step ${stepState.step.id}`)
-              return res.json()
+      // Save all dirty steps in parallel.
+      // If a step returns 404 (deleted in the meantime), we treat it as a
+      // no-op rather than crashing the whole save.
+      const results = (
+        await Promise.all(
+          dirtySteps.map(stepState =>
+            fetch(`/api/step/${stepState.step.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(stepState.step),
             })
-            .then(data => data.step as Step)
+              .then(res => {
+                if (res.status === 404) return null // step gone – skip
+                if (!res.ok) throw new Error(`Failed to save step ${stepState.step.id}`)
+                return res.json()
+              })
+              .then(data => (data?.step as Step) ?? null)
+          )
         )
-      )
+      ).filter((s): s is Step => s !== null)
 
       // All saves successful
       dispatch({ type: "SAVE_SUCCESS", savedSteps: results })
@@ -1204,7 +1222,7 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
       dispatch({ type: "SAVE_ERROR" })
       return false
     }
-  }, [state.steps, state.flirtId, flirtStructure, isDirty])
+  }, [state.steps, state.flirtId, flirtStructure])
 
   return (
     <EditorContext.Provider
