@@ -5,11 +5,24 @@ import { useRouter } from "next/navigation"
 import { useState, useRef, useEffect } from "react"
 import { TextItem } from "../editor/canvas/elements/text"
 
-import { useEditor } from "@/contexts/editor-context";
+import { useEditor } from "@/contexts/editor-context"
+import type { Step } from "@/types/step"
+
+const EMPTY_STEP: Step = {
+  id: "",
+  flirtId: "",
+  order: 0,
+  content: "",
+  media: [],
+  elements: [],
+  logics: [],
+}
 
 interface StepPreviewProps {
   flirtId: string
   stepId: string
+  /** Step from DB (server) – used when editor has no unsaved data for this step */
+  stepFromDb?: Step | null
 }
 
 const VIEWPORT_PRESETS = {
@@ -23,11 +36,15 @@ type ViewportPreset = keyof typeof VIEWPORT_PRESETS
 const CANVAS_WIDTH = 1920
 const CANVAS_HEIGHT = 1080
 
-export default function StepPreview({ flirtId, stepId }: StepPreviewProps) {
+export default function StepPreview({ flirtId, stepId, stepFromDb }: StepPreviewProps) {
   const [viewportPreset, setViewportPreset] = useState<ViewportPreset>("desktop")
   const [scale, setScale] = useState(1)
   const containerRef = useRef<HTMLDivElement>(null)
-  const { step } = useEditor()
+  const { getStepState } = useEditor()
+
+  // Prefer editor state (unsaved) over DB – ensures preview shows current edits
+  const stepState = getStepState(stepId)
+  const step = stepState?.step ?? stepFromDb ?? EMPTY_STEP
 
   const router = useRouter();
 
