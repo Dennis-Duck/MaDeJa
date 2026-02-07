@@ -42,23 +42,9 @@ export default function StepPageClientInner({
     flirtStructure,
     initFlirtStructureFromDb,
     deleteStepInStructure,
+    getStepState,
   } = useEditor();
 
-  /**
-   * Watch the structure layer for undo/redo changes.
-   * If the current step disappears from the stepOrder (e.g. because the user
-   * undid a "create step"), navigate to the last step in the order.
-   */
-  useEffect(() => {
-    if (structureStepOrder.length === 0) return;
-    if (structureStepOrder.includes(step.id)) return;
-
-    // Current step is no longer in the structure order – navigate away
-    const lastStepId = structureStepOrder[structureStepOrder.length - 1];
-    if (lastStepId) {
-      router.replace(`/flirts/${initialFlirtId}/steps/${lastStepId}`);
-    }
-  }, [structureStepOrder, step.id, initialFlirtId, router]);
   // NOTE:
   // We keep this as a fallback for DB-only sessions, but the UI should
   // prefer the light structure layer (Layer 1) whenever possible.
@@ -80,10 +66,6 @@ export default function StepPageClientInner({
   const structureHasOrder = structureStepOrder.length > 0;
   const stepInOrder = structureHasOrder && structureStepOrder.includes(step.id);
 
-  // When the current step was removed from the order (e.g. after undo),
-  // immediately show the index of the last step in the order (where we are
-  // about to navigate). This avoids the brief "3/2" flash while
-  // router.replace is still in-flight.
   const currentIndex = stepInOrder
     ? structureStepOrder.indexOf(step.id) + 1
     : structureHasOrder
@@ -212,72 +194,75 @@ export default function StepPageClientInner({
     try {
       const order = structureStepOrder.length > 0 ? structureStepOrder : [step.id];
       const currentIndexInOrder = order.indexOf(step.id);
-      const prevId = currentIndexInOrder > 0 ? order[currentIndexInOrder - 1] : null;
-      const nextId = currentIndexInOrder >= 0 && currentIndexInOrder < order.length - 1 ? order[currentIndexInOrder + 1] : null;
 
-      // Distinguish between TEMP steps (never saved) and DB-backed steps
+      // Determine navigation target before any mutations
+      const newOrderAfterDelete = order.filter(id => id !== step.id);
+      const targetIndex = Math.min(currentIndexInOrder, newOrderAfterDelete.length - 1);
+      const targetStepId = targetIndex >= 0 ? newOrderAfterDelete[targetIndex] : null;
+
       const isTempStep = !!flirtStructure?.newStepIds.includes(step.id);
+      const stepIdToDelete = step.id;
 
-      // Helper: navigate to neighbour or create a fresh temp step if none exist
-      const navigateAfterDelete = async () => {
-        const targetStepId = nextId || prevId;
+      // Navigation strategy: sync state BEFORE structure mutation to prevent UI flicker
+      if (targetStepId) {
+        // Get target step from editor context
+        const targetStepState = getStepState(targetStepId);
 
-        if (targetStepId) {
-          router.replace(`/flirts/${initialFlirtId}/steps/${targetStepId}`);
-          return;
+        if (targetStepState) {
+          // Synchronously update current step in context to match navigation target
+          // This ensures currentIndex calculation uses the new step.id immediately
+          setStep(targetStepState.step);
         }
 
-        // No steps left in structure → create a brand new TEMP base step
-        const tempStepId =
-          (typeof crypto !== "undefined" && "randomUUID" in crypto && crypto.randomUUID()) ||
-          `temp-${Math.random().toString(36).slice(2)}`;
+        // Start navigation (async, but state is already synced)
+        router.replace(`/flirts/${initialFlirtId}/steps/${targetStepId}`);
 
-        const newStep: Step = {
-          id: tempStepId,
-          flirtId: initialFlirtId,
-          order: 1,
-          content: "",
-          media: [],
-          elements: [],
-          logics: [],
-        };
+        // Now safe to mutate structure - currentIndex will be correct
+        deleteStepInStructure(stepIdToDelete);
 
-        createStepInStructure({
-          stepId: tempStepId,
-          isNew: true,
-          insertAfterId: null,
-        });
+        // Cleanup step state (temp or DB-backed)
+        if (isTempStep) {
+          removeStep(stepIdToDelete);
+        } else {
+          // DB-backed: keep in memory until save, just marked as deleted in structure
+          removeStep(stepIdToDelete);
+        }
 
-        addOrUpdateStep(newStep);
-        setStep(newStep);
-        setTotalStepsState(1);
-        router.replace(`/flirts/${initialFlirtId}/steps/${tempStepId}`);
-      };
-
-      if (isTempStep) {
-        // Purely client-side delete: only touch structure + in-memory step state
-        deleteStepInStructure(step.id);
-        removeStep(step.id);
-        await navigateAfterDelete();
+        setTotalStepsState((prev) => Math.max(prev - 1, 1));
         return;
       }
 
-      // DB-backed step: still call the API for now, but ALSO keep our own structure layer in sync.
-      const resDelete = await fetch(`/api/step/${step.id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+      // Edge case: no steps left after deletion → create fresh temp step
+      const tempStepId =
+        (typeof crypto !== "undefined" && "randomUUID" in crypto && crypto.randomUUID()) ||
+        `temp-${Math.random().toString(36).slice(2)}`;
+
+      const newStep: Step = {
+        id: tempStepId,
+        flirtId: initialFlirtId,
+        order: 1,
+        content: "",
+        media: [],
+        elements: [],
+        logics: [],
+      };
+
+      // Delete old step from structure
+      deleteStepInStructure(stepIdToDelete);
+      removeStep(stepIdToDelete);
+
+      // Create and navigate to new temp step
+      createStepInStructure({
+        stepId: tempStepId,
+        isNew: true,
+        insertAfterId: null,
       });
 
-      if (!resDelete.ok) {
-        throw new Error("Failed to delete step");
-      }
+      addOrUpdateStep(newStep);
+      setStep(newStep);
+      setTotalStepsState(1);
+      router.replace(`/flirts/${initialFlirtId}/steps/${tempStepId}`);
 
-      // We don't strictly need the body here; structure/order is driven by Layer 1.
-      deleteStepInStructure(step.id);
-      removeStep(step.id);
-      setTotalStepsState((prev) => Math.max(prev - 1, 1));
-
-      await navigateAfterDelete();
     } catch (err) {
       console.error("Failed to delete step", err);
       alert("Error while deleting step");
