@@ -97,18 +97,25 @@ export function TextItem({
   }, [currentSegmentIndex, mode, width, height, isPreviewMode]) // Added isPreviewMode to dependencies
 
   useEffect(() => {
-    if (!isPreviewMode || !segmentRefs.current[currentSegmentIndex]) return
+    if (!isPreviewMode || !containerRef.current || !segmentRefs.current[currentSegmentIndex]) return
 
-    // Wait for next frame to ensure spacer heights are applied
+    // Scroll only our internal container – never parents. scrollIntoView can scroll
+    // the page when the text box is partially off-screen, causing layout jumps.
     const raf = requestAnimationFrame(() => {
-      segmentRefs.current[currentSegmentIndex]?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      })
+      const container = containerRef.current
+      const segment = segmentRefs.current[currentSegmentIndex]
+      if (!container || !segment) return
+
+      const segmentTop = segment.offsetTop
+      const segmentHeight = segment.offsetHeight
+      const containerHeight = container.clientHeight
+      const scrollTop = Math.max(0, segmentTop - (containerHeight - segmentHeight) / 2)
+
+      container.scrollTo({ top: scrollTop, behavior: "smooth" })
     })
 
     return () => cancelAnimationFrame(raf)
-  }, [currentSegmentIndex, mode, spacerHeight, isPreviewMode]) // Added isPreviewMode to dependencies
+  }, [currentSegmentIndex, mode, spacerHeight, isPreviewMode])
 
   return (
     <div
