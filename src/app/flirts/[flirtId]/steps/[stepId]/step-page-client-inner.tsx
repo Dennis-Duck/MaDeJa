@@ -95,18 +95,15 @@ export default function StepPageClientInner({
     console.log("[Editor][UI] currentIndex/total:", currentIndex, "/", derivedTotalSteps);
   }
 
-  const fetchNextStep = async () => {
+  const fetchNextStep = () => {
     // If we are currently on the last known step, create a TEMPORARY step
-    // in the light flirt-structure layer (Layer 1) instead of hitting the DB.
     if (isLastStep) {
-      // Generate a client-only temporary step id
       const tempStepId =
         (typeof crypto !== "undefined" && "randomUUID" in crypto && crypto.randomUUID()) ||
         `temp-${Math.random().toString(36).slice(2)}`;
 
       const nextOrder = derivedTotalSteps + 1;
 
-      // Create a minimal new Step object for the editor (Layer 2)
       const newStep: Step = {
         id: tempStepId,
         flirtId: initialFlirtId,
@@ -117,75 +114,53 @@ export default function StepPageClientInner({
         logics: [],
       };
 
-      // 1) Update the light flirt structure (Layer 1)
       createStepInStructure({
         stepId: tempStepId,
         isNew: true,
         insertAfterId: step.id,
       });
 
-      // 2) Register the new step in the content editor state (Layer 2)
       addOrUpdateStep(newStep);
       setStep(newStep);
-
-      // 3) Keep local totalSteps in sync (this is still only in-memory)
       setTotalStepsState(prev => prev + 1);
-
-      // 4) Navigate to the new (temporary) step route
       router.push(`/flirts/${initialFlirtId}/steps/${tempStepId}`);
 
       return { step: newStep, totalSteps: totalStepsState + 1 };
     }
 
-    // Non-last step: still use the existing DB-based navigation for now.
-    try {
-      // Prefer structure-driven navigation if possible (DB + temp)
-      if (structureHasOrder && structureStepOrder.includes(step.id)) {
-        const nextId = structureStepOrder[structureStepOrder.indexOf(step.id) + 1];
-        if (nextId) {
-          router.push(`/flirts/${initialFlirtId}/steps/${nextId}`);
-          return { stepId: nextId };
-        }
+    // Structure-driven navigation
+    if (structureHasOrder && structureStepOrder.includes(step.id)) {
+      const currentIdx = structureStepOrder.indexOf(step.id);
+      const nextId = structureStepOrder[currentIdx + 1];
+
+      if (nextId) {
+        router.push(`/flirts/${initialFlirtId}/steps/${nextId}`);
+        return { stepId: nextId };
       }
-
-      // Fallback: DB-based navigation
-      const res = await fetch(`/api/step/${step.id}/next`, { method: "GET" });
-      if (!res.ok) return null;
-      const data = await res.json();
-
-      createStepInStructure({ stepId: data.step.id, isNew: false, insertAfterId: step.id });
-
-      if (data.totalSteps) setTotalStepsState(data.totalSteps);
-      router.push(`/flirts/${initialFlirtId}/steps/${data.step.id}`);
-      return data;
-    } catch (err) {
-      console.error("fetchNextStep error", err);
-      return null;
     }
+
+    // Graceful fallback: if step not in structure or no next step exists
+    // This can happen after undo operations or during transitions
+    console.warn("Cannot navigate to next step: step not in structure or no next step available");
+    return null;
   };
 
-  const fetchPreviousStep = async () => {
-    try {
-      // Prefer structure-driven navigation if possible (DB + temp)
-      if (structureHasOrder && structureStepOrder.includes(step.id)) {
-        const prevId = structureStepOrder[structureStepOrder.indexOf(step.id) - 1];
-        if (prevId) {
-          router.push(`/flirts/${initialFlirtId}/steps/${prevId}`);
-          return { stepId: prevId };
-        }
-      }
+  const fetchPreviousStep = () => {
+    // Structure-driven navigation
+    if (structureHasOrder && structureStepOrder.includes(step.id)) {
+      const currentIdx = structureStepOrder.indexOf(step.id);
+      const prevId = structureStepOrder[currentIdx - 1];
 
-      const res = await fetch(`/api/step/${step.id}/previous`, {
-        method: "GET",
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      router.push(`/flirts/${initialFlirtId}/steps/${data.step.id}`);
-      return data;
-    } catch (err) {
-      console.error("fetchPreviousStep error", err);
-      return null;
+      if (prevId) {
+        router.push(`/flirts/${initialFlirtId}/steps/${prevId}`);
+        return { stepId: prevId };
+      }
     }
+
+    // Graceful fallback: if step not in structure or no previous step exists
+    // This can happen after undo operations or during transitions
+    console.warn("Cannot navigate to previous step: step not in structure or no previous step available");
+    return null;
   };
 
   const handleDelete = async () => {

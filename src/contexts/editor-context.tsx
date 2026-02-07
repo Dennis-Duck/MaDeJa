@@ -416,17 +416,17 @@ type EditorReducerAction =
   // Flirt structure – init + structural mutations
   | { type: "INIT_FLIRT_STRUCTURE"; flirtId: string; structure: FlirtStructureState }
   | {
-      type: "STRUCTURE_CREATE_STEP"
-      payload: { stepId: string; isNew?: boolean; insertAfterId?: string | null }
-    }
+    type: "STRUCTURE_CREATE_STEP"
+    payload: { stepId: string; isNew?: boolean; insertAfterId?: string | null }
+  }
   | { type: "STRUCTURE_DELETE_STEP"; payload: { stepId: string } }
   | { type: "STRUCTURE_REORDER_STEPS"; payload: { stepOrder: string[] } }
   | { type: "STRUCTURE_UNDO" }
   | { type: "STRUCTURE_REDO" }
   | {
-      type: "STRUCTURE_INIT_FROM_DB"
-      payload: { flirtId: string; dbSteps: Array<{ id: string; order: number }> }
-    }
+    type: "STRUCTURE_INIT_FROM_DB"
+    payload: { flirtId: string; dbSteps: Array<{ id: string; order: number }> }
+  }
   | { type: "STRUCTURE_COMMIT" }
 
 // Reducer function - all state updates are atomic
@@ -811,8 +811,14 @@ function editorReducer(state: EditorState, action: EditorReducerAction): EditorS
 
       const nextRedoStack = [...state.flirtStructure.redoStack, currentSnapshot].slice(-MAX_STRUCTURE_UNDO_STACK)
 
+      // ✅ CHECK: Is huidige step nog in de nieuwe order?
+      const newCurrentStepId = previous.stepOrder.includes(state.currentStepId)
+        ? state.currentStepId  // Huidige step is nog geldig
+        : previous.stepOrder[previous.stepOrder.length - 1] || state.currentStepId  // Navigeer naar laatste step in order
+
       return {
         ...state,
+        currentStepId: newCurrentStepId,  // ← FIX: update current step!
         flirtStructure: {
           stepIds: previous.stepIds,
           stepOrder: previous.stepOrder,
@@ -839,8 +845,14 @@ function editorReducer(state: EditorState, action: EditorReducerAction): EditorS
 
       const nextUndoStack = [...state.flirtStructure.undoStack, currentSnapshot].slice(-MAX_STRUCTURE_UNDO_STACK)
 
+      // ✅ CHECK: Is huidige step nog in de nieuwe order?
+      const newCurrentStepId = next.stepOrder.includes(state.currentStepId)
+        ? state.currentStepId  // Huidige step is nog geldig
+        : next.stepOrder[next.stepOrder.length - 1] || state.currentStepId  // Navigeer naar laatste step in order
+
       return {
         ...state,
+        currentStepId: newCurrentStepId,  // ← FIX: update current step!
         flirtStructure: {
           stepIds: next.stepIds,
           stepOrder: next.stepOrder,
