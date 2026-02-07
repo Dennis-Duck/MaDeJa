@@ -12,8 +12,22 @@ export default function StepEditorLayout({
   footer: React.ReactNode;
 }) {
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      <div style={{ flex: 1, display: "flex", position: "relative" }}>
+    <div
+      style={{
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          position: "relative",
+        }}
+      >
         <aside
           style={{
             width: 260,
@@ -27,6 +41,7 @@ export default function StepEditorLayout({
         <main
           style={{
             flex: 1,
+            minHeight: 0,
             padding: 24,
             overflowY: "auto",
             position: "relative",
