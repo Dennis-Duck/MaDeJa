@@ -36,7 +36,6 @@ export default function StepPageClientInner({
     step,
     setStep,
     addOrUpdateStep,
-    removeStep,
     createStepInStructure,
     structureStepOrder,
     flirtStructure,
@@ -175,7 +174,6 @@ export default function StepPageClientInner({
       const targetIndex = Math.min(currentIndexInOrder, newOrderAfterDelete.length - 1);
       const targetStepId = targetIndex >= 0 ? newOrderAfterDelete[targetIndex] : null;
 
-      const isTempStep = !!flirtStructure?.newStepIds.includes(step.id);
       const stepIdToDelete = step.id;
 
       // Navigation strategy: sync state BEFORE structure mutation to prevent UI flicker
@@ -195,13 +193,8 @@ export default function StepPageClientInner({
         // Now safe to mutate structure - currentIndex will be correct
         deleteStepInStructure(stepIdToDelete);
 
-        // Cleanup step state (temp or DB-backed)
-        if (isTempStep) {
-          removeStep(stepIdToDelete);
-        } else {
-          // DB-backed: keep in memory until save, just marked as deleted in structure
-          removeStep(stepIdToDelete);
-        }
+        // DON'T call removeStep here: step content stays in memory so that
+        // structure undo can restore it. Cleanup happens on save (STRUCTURE_COMMIT).
 
         setTotalStepsState((prev) => Math.max(prev - 1, 1));
         return;
@@ -224,7 +217,7 @@ export default function StepPageClientInner({
 
       // Delete old step from structure
       deleteStepInStructure(stepIdToDelete);
-      removeStep(stepIdToDelete);
+      // DON'T removeStep: content stays so structure undo can restore it.
 
       // Create and navigate to new temp step
       createStepInStructure({

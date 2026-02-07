@@ -1178,6 +1178,13 @@ export function EditorProvider({ children, initialStep }: EditorProviderProps) {
         }
 
         dispatch({ type: "STRUCTURE_COMMIT" })
+
+        // Clean up localStorage for deleted steps (they're gone from DB now)
+        for (const deletedId of flirtStructure.deletedStepIds) {
+          removeStepStateFromStorage(deletedId)
+          removeUndoStackFromStorage(deletedId)
+          removeRedoStackFromStorage(deletedId)
+        }
       }
 
       // 2) Persist all dirty step contents (elements, media, logics, ...)
